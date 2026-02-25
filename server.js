@@ -6,278 +6,249 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-const port = process.env.PORT || 3000;
+const port = 3000;
 
 let players = {};
 let bots = {};
-const cards = [
-  {id:0,name:"بطاقة 1",multiplier:2},
-  {id:1,name:"بطاقة 2",multiplier:5},
-  {id:2,name:"بطاقة 3",multiplier:10}
-];
 let currentBets = [];
-let countdown = 20; // 20 ثانية عد تنازلي
 
-// صفحة HTML
+const cards = [
+  {id:0,m:2},
+  {id:1,m:5},
+  {id:2,m:10}
+];
+
+let countdown = 20;
+
 app.get("/", (req,res)=>{
-res.send(`
-<!DOCTYPE html>
+res.send(`<!DOCTYPE html>
 <html lang="ar">
 <head>
 <meta charset="UTF-8">
-<title>🎰 كازينو بطاقات</title>
+<title>🎰 Casino Cards</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="/socket.io/socket.io.js"></script>
+
 <style>
-body{font-family:sans-serif;background:linear-gradient(45deg,#7b1fa2,#f06292);min-height:100vh;color:white;display:flex;flex-direction:column;align-items:center;padding:10px;}
-#casinoTable{display:flex;gap:20px;margin-top:20px;position:relative;}
-.card{width:150px;height:200px;background:white;color:black;border-radius:15px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:2rem;font-weight:bold;position:relative;cursor:pointer;transition:0.3s;}
-.card:hover{transform:scale(1.05);}
-.card.selected{box-shadow:0 0 40px lime;transform:scale(1.1);}
-.chip{position:absolute;width:30px;height:30px;border-radius:50%;background:gold;text-align:center;line-height:30px;transition:all 1s ease;}
-#frame{position:absolute;border:4px solid yellow;width:160px;height:210px;border-radius:15px;transition:all 0.2s;}
-#balanceDiv{font-size:1.5rem;font-weight:bold;margin-top:10px;}
-#playersDiv{margin-top:10px;width:500px;}
-.playerItem{display:flex;justify-content:space-between;margin-bottom:5px;}
-#messages{margin-top:10px;}
-#countdown{font-size:1.5rem;margin-top:10px;}
-#betIcons{margin-top:10px;display:flex;gap:5px;}
-.betIcon{background:yellow;color:black;padding:5px 10px;border-radius:5px;cursor:pointer;font-weight:bold;}
-.betIcon.selected{background:lime;}
+body{background:linear-gradient(45deg,#3f0d54,#d72660);color:white;font-family:sans-serif;text-align:center}
+.card{width:160px;height:220px;background:white;color:black;border-radius:18px;display:flex;flex-direction:column;justify-content:center;align-items:center;font-size:42px;font-weight:bold;cursor:pointer;transition:.3s}
+.card:hover{transform:scale(1.05)}
+.selected{box-shadow:0 0 50px lime}
+#table{display:flex;gap:20px;justify-content:center;margin-top:20px}
+.betBtn{background:gold;color:black;padding:6px 12px;border-radius:8px;margin:4px;cursor:pointer;font-weight:bold}
+.betBtn.sel{background:lime}
+#frame{position:absolute;border:4px solid yellow;border-radius:20px;width:170px;height:230px;pointer-events:none}
 </style>
 </head>
-<body>
-<h1 class="text-4xl font-bold">🎰 كازينو بطاقات</h1>
-<div id="balanceDiv">رصيدك: 500</div>
-<div id="betIcons">
-  <div class="betIcon" data-value="10">10</div>
-  <div class="betIcon" data-value="20">20</div>
-  <div class="betIcon" data-value="30">30</div>
-  <div class="betIcon" data-value="40">40</div>
-  <div class="betIcon" data-value="50">50</div>
-</div>
-<div id="casinoTable"></div>
-<div id="playersDiv"></div>
-<div id="messages"></div>
-<div id="countdown">🕒 20</div>
 
-<audio id="betSound" src="https://www.soundjay.com/button/beep-07.wav"></audio>
-<audio id="winSound" src="https://www.soundjay.com/button/beep-10.wav"></audio>
-<audio id="loseSound" src="https://www.soundjay.com/button/beep-05.wav"></audio>
+<body>
+
+<h1 class="text-4xl mt-4">🎰 كازينو البطاقات</h1>
+
+<div id="balance"></div>
+<div id="countdown"></div>
+
+<div id="bets"></div>
+
+<div id="table"></div>
+
+<div id="players"></div>
+
+<audio id="betS" src="https://www.soundjay.com/button/beep-07.wav"></audio>
+<audio id="winS" src="https://www.soundjay.com/button/beep-10.wav"></audio>
+<audio id="loseS" src="https://www.soundjay.com/button/beep-05.wav"></audio>
+<audio autoplay loop src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"></audio>
 
 <script>
+
 const socket = io();
+
+let balance = localStorage.getItem("balance") 
+  ? parseInt(localStorage.getItem("balance"))
+  : 500;
+
+let myBet = 10;
 let myID;
-let balance=500;
-let myBetAmount = 10;
-const table = document.getElementById("casinoTable");
-const balanceDiv = document.getElementById("balanceDiv");
-const messages = document.getElementById("messages");
-const playersDiv = document.getElementById("playersDiv");
+
+const balanceDiv = document.getElementById("balance");
+const table = document.getElementById("table");
+const playersDiv = document.getElementById("players");
 const countdownDiv = document.getElementById("countdown");
-const betSound = document.getElementById("betSound");
-const winSound = document.getElementById("winSound");
-const loseSound = document.getElementById("loseSound");
 
-const cardsList = ${JSON.stringify(cards)};
-const frame = document.createElement("div");
-frame.id="frame";
-document.body.appendChild(frame);
+function save(){
+  localStorage.setItem("balance",balance);
+}
 
-// أيقونات الرهان
-document.querySelectorAll(".betIcon").forEach(icon=>{
-  icon.onclick = ()=>{
-    myBetAmount = parseInt(icon.dataset.value);
-    document.querySelectorAll(".betIcon").forEach(i=>i.classList.remove("selected"));
-    icon.classList.add("selected");
-  };
+function updateBalance(){
+  balanceDiv.innerHTML = "💰 رصيدك: " + balance;
+}
+
+updateBalance();
+
+// ===== أزرار الرهان =====
+const betsDiv = document.getElementById("bets");
+[10,20,30,40,50].forEach(v=>{
+  const b=document.createElement("div");
+  b.className="betBtn";
+  b.innerText=v;
+  b.onclick=()=>{
+    myBet=v;
+    document.querySelectorAll(".betBtn").forEach(x=>x.classList.remove("sel"));
+    b.classList.add("sel");
+  }
+  betsDiv.appendChild(b);
 });
 
-// إنشاء البطاقات
-cardsList.forEach((c)=>{
-  const div=document.createElement("div");
-  div.id="card"+c.id;
-  div.className="card";
-  div.innerHTML = \`\${c.name}<br><span style="font-size:1.5rem">×\${c.multiplier}</span>\`;
-  div.onclick = ()=>{
-    if(balance<myBetAmount){alert("رصيدك غير كافي"); return;}
-    balance -= myBetAmount;
+// ===== البطاقات =====
+const cards = ${JSON.stringify(cards)};
+
+cards.forEach(c=>{
+  const d=document.createElement("div");
+  d.className="card";
+  d.id="card"+c.id;
+  d.innerHTML="×"+c.m;
+
+  d.onclick=()=>{
+    if(balance < myBet) return alert("رصيد غير كافي");
+
+    balance -= myBet;
+    save();
     updateBalance();
-    socket.emit("placeBet",{card:c.id,amount:myBetAmount,multiplier:c.multiplier});
-    messages.innerText="وضعت رهانك على "+c.name+" بمبلغ "+myBetAmount;
-    animateChipToCard(c.id);
-    betSound.play();
-  };
-  table.appendChild(div);
+
+    socket.emit("bet",{card:c.id,amount:myBet,m:c.m});
+    document.getElementById("betS").play();
+  }
+
+  table.appendChild(d);
 });
 
-function updateBalance(){balanceDiv.innerText="رصيدك: "+balance;}
-
-function animateChipToCard(cardIndex){
-  const chip = document.createElement("div");
-  chip.className="chip";
-  chip.innerText="💎";
-  document.body.appendChild(chip);
-  chip.style.left = "50%";
-  chip.style.top = "80%";
-  const card = document.getElementById("card"+cardIndex);
-  const rect = card.getBoundingClientRect();
-  setTimeout(()=>{chip.style.left = rect.left + rect.width/2 -15+"px"; chip.style.top = rect.top + rect.height/2 -15+"px";},50);
-  setTimeout(()=>chip.remove(),1200);
-}
-
-function updatePlayersList(players){
-  playersDiv.innerHTML="";
-  players.forEach(p=>{
-    const div=document.createElement("div");
-    div.className="playerItem";
-    div.innerHTML=\`<span>\${p.username}</span><span>رصيد: \${p.balance} | رهان: \${p.amount||0}</span>\`;
-    playersDiv.appendChild(div);
+// ===== عرض اللاعبين =====
+socket.on("players",list=>{
+  playersDiv.innerHTML="<h3>👥 اللاعبين</h3>";
+  list.forEach(p=>{
+    playersDiv.innerHTML += p.name + " | 💰"+p.balance+
+      (p.amount? " | 🎯"+p.amount:"") + "<br>";
   });
-}
+});
 
-function spinFrame(callback){
+// ===== العد التنازلي =====
+socket.on("count",t=>{
+  countdownDiv.innerHTML = "⏳ يبدأ خلال: " + t;
+});
+
+// ===== نتيجة الجولة =====
+socket.on("result",data=>{
+
   let i=0;
-  const interval = setInterval(()=>{
-    frame.style.left = document.getElementById("card"+i).getBoundingClientRect().left-5+"px";
-    frame.style.top = document.getElementById("card"+i).getBoundingClientRect().top-5+"px";
-    i=(i+1)%3;
+  const spin = setInterval(()=>{
+    document.getElementById("card"+(i%3)).classList.add("selected");
+    setTimeout(()=>document.getElementById("card"+(i%3)).classList.remove("selected"),100);
+    i++;
   },100);
+
   setTimeout(()=>{
-    clearInterval(interval);
-    const winner = Math.floor(Math.random()*3);
-    frame.style.left = document.getElementById("card"+winner).getBoundingClientRect().left-5+"px";
-    frame.style.top = document.getElementById("card"+winner).getBoundingClientRect().top-5+"px";
-    callback(winner);
-  },3000);
-}
+    clearInterval(spin);
 
-// استقبال اللاعبين
-socket.on("updatePlayers",data=>{
-  updatePlayersList(data);
-  cardsList.forEach((c)=>{document.getElementById("card"+c.id).querySelectorAll(".chip").forEach(e=>e.remove());});
-  data.forEach(p=>{
-    if(p.betCard!==undefined){
-      const div=document.getElementById("card"+p.betCard);
-      const chip = document.createElement("div");
-      chip.className="chip";
-      chip.innerText="💎";
-      div.appendChild(chip);
+    const winCard = data.win;
+
+    document.getElementById("card"+winCard).classList.add("selected");
+
+    if(data.winners.includes(myID)){
+      const w = data.amounts[myID];
+      balance += w;
+      document.getElementById("winS").play();
+      alert("🎉 ربحت "+w);
+    } else if(data.losers.includes(myID)){
+      document.getElementById("loseS").play();
     }
-  });
-});
 
-// استقبال نتائج الجولة
-socket.on("roundResult",data=>{
-  spinFrame((winnerCard)=>{
-    const divWin = document.getElementById("card"+winnerCard);
-    divWin.classList.add("selected");
-    setTimeout(()=>divWin.classList.remove("selected"),2000);
-
-    if(data.winnerIDs.includes(myID)){
-      const winAmount = data.winAmounts[myID];
-      balance += winAmount;
-      winSound.play();
-      alert("🎉 فزت! رصيدك زاد بمقدار "+winAmount);
-    }else if(data.loserIDs.includes(myID)){
-      loseSound.play();
-      alert("💀 خسرت! رهانك ذهب");
-    }
+    save();
     updateBalance();
-  });
+
+    setTimeout(()=>{
+      document.getElementById("card"+winCard).classList.remove("selected");
+    },3000);
+
+  },3000);
 });
 
-myID=socket.id;
-socket.emit("setUser",{username:"لاعب"+Math.floor(Math.random()*1000)});
+myID = socket.id;
+
 </script>
 </body>
-</html>
-`);
+</html>`);
 });
 
-// WebSocket
-io.on("connection", socket=>{
-  players[socket.id]={id:socket.id,username:"لاعب"+Math.floor(Math.random()*1000),balance:500};
-  socket.emit("updatePlayers",Object.values(players));
+// ===== WebSocket =====
 
-  socket.on("setUser", data=>{
-    if(players[socket.id]) players[socket.id].username=data.username;
-    io.emit("updatePlayers",Object.values(players));
+io.on("connection",socket=>{
+
+  players[socket.id]={id:socket.id,name:"لاعب"+Math.floor(Math.random()*1000),balance:500};
+
+  socket.on("bet",b=>{
+    const p=players[socket.id];
+    p.betCard=b.card;
+    p.amount=b.amount;
+    p.m=b.m;
+    currentBets.push({id:socket.id,...b});
   });
 
-  socket.on("placeBet", bet=>{
-    const player = players[socket.id];
-    if(player.balance<0) return;
-    player.betCard = bet.card;
-    player.amount = bet.amount;
-    player.multiplier = bet.multiplier;
-    currentBets.push({id:socket.id,...bet});
-    io.emit("updatePlayers",Object.values(players));
-  });
-
-  socket.on("disconnect", ()=>{
+  socket.on("disconnect",()=>{
     delete players[socket.id];
-    io.emit("updatePlayers",Object.values(players));
   });
 });
 
-// بوتات
+// ===== البوتات =====
 for(let i=0;i<5;i++){
-  const botID="bot"+i;
-  bots[botID]={id:botID,username:"بوت"+(i+1),balance:500};
+  bots["bot"+i]={id:"bot"+i,name:"بوت"+(i+1),balance:500};
 }
 
-// جولة كل 20 ثانية
+// ===== نظام الجولة =====
 setInterval(()=>{
-  // العد التنازلي
-  let timeLeft = 20;
-  const countdownInterval = setInterval(()=>{
-    countdownDiv.innerText="🕒 "+timeLeft;
-    timeLeft--;
-    if(timeLeft<0) clearInterval(countdownInterval);
+
+  // عد تنازلي
+  let t=20;
+  const cd = setInterval(()=>{
+    io.emit("count",t);
+    t--;
+    if(t<0) clearInterval(cd);
   },1000);
 
-  // بوتات تراهن
-  Object.values(bots).forEach(bot=>{
-    const card = Math.floor(Math.random()*3);
-    const amount = Math.floor(Math.random()*5+1)*10; // 10-50
-    if(bot.balance>=amount){
-      bot.betCard=card;
-      bot.amount=amount;
-      bot.multiplier = cards[card].multiplier;
-      currentBets.push({id:bot.id,...bot});
-    }
-  });
+  setTimeout(()=>{
 
-  if(currentBets.length===0) return;
+    // رهانات البوتات
+    Object.values(bots).forEach(b=>{
+      const card=Math.floor(Math.random()*3);
+      const amt=(Math.floor(Math.random()*5)+1)*10;
+      if(b.balance>=amt){
+        b.betCard=card;
+        b.amount=amt;
+        b.m=cards[card].m;
+        currentBets.push({id:b.id,...b});
+      }
+    });
 
-  const winnerCard=Math.floor(Math.random()*3);
-  const winnerIDs=currentBets.filter(b=>b.card===winnerCard).map(b=>b.id);
-  const loserIDs=currentBets.filter(b=>b.card!==winnerCard).map(b=>b.id);
+    const win = Math.floor(Math.random()*3);
 
-  const winAmounts={},loseAmounts={};
-  winnerIDs.forEach(id=>{
-    const b=currentBets.find(b=>b.id===id);
-    if(players[id]) players[id].balance += b.amount*b.multiplier;
-    else if(bots[id]) bots[id].balance += b.amount*b.multiplier;
-    winAmounts[id]=b.amount*b.multiplier;
-  });
+    const winners = currentBets.filter(x=>x.card===win).map(x=>x.id);
+    const losers = currentBets.filter(x=>x.card!==win).map(x=>x.id);
 
-  loserIDs.forEach(id=>{
-    const b=currentBets.find(b=>b.card!==winnerCard);
-    if(players[id]) players[id].balance -= b.amount;
-    else if(bots[id]) bots[id].balance -= b.amount;
-    loseAmounts[id]=b.amount;
-  });
+    const amounts={};
 
-  Object.keys(players).forEach(id=>{
-    io.to(id).emit("roundResult",{winnerCard,winnerIDs,loserIDs,winAmounts,loseAmounts});
-  });
+    winners.forEach(id=>{
+      const b=currentBets.find(x=>x.id===id);
+      const w=b.amount*b.m;
+      amounts[id]=w;
+      if(players[id]) players[id].balance+=w;
+      if(bots[id]) bots[id].balance+=w;
+    });
 
-  currentBets=[];
-  Object.values(players).forEach(p=>{delete p.betCard; delete p.amount; delete p.multiplier;});
-  Object.values(bots).forEach(b=>{delete b.betCard; delete b.amount; delete b.multiplier;});
-  io.emit("updatePlayers",Object.values(players).concat(Object.values(bots)));
-},20000);
+    io.emit("result",{win,winners,losers,amounts});
 
-server.listen(port,()=>console.log("Server running on port "+port));
+    currentBets=[];
+
+  },20000);
+
+},21000);
+
+server.listen(port,()=>console.log("Running on 3000"));
