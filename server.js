@@ -1,6 +1,7 @@
 const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
+const path = require("path");
 
 const app = express();
 const server = http.createServer(app);
@@ -9,107 +10,116 @@ const io = new Server(server);
 const port = process.env.PORT || 3000;
 
 let players = {};
+const cards = ["بطاقة 1","بطاقة 2","بطاقة 3","بطاقة 4"];
 const avatars = ["🧑","👩","👨","👧","🧒","👱‍♀️","👱‍♂️","🧔","👵","👴"];
-const cards = ["البطاقة 1","البطاقة 2","البطاقة 3","البطاقة 4"]; // البطاقات
+let currentBets = [];
 
-// صفحة اللعبة HTML/CSS/JS مدمجة
 app.get("/", (req,res)=>{
-    res.send(`
+  res.send(`
 <!DOCTYPE html>
 <html lang="ar">
 <head>
 <meta charset="UTF-8">
-<title>لعبة الرهان الجماعية</title>
+<title>🎰 كازينو رهانات جماعي</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="/socket.io/socket.io.js"></script>
+<style>
+  body{font-family:sans-serif;background:#7b1fa2;}
+  #casinoTable{background:#8b0000;border-radius:20px;padding:20px;display:grid;grid-template-columns:repeat(4,1fr);gap:20px;}
+  .card{background:#fff;border-radius:15px;padding:20px;text-align:center;position:relative;cursor:pointer;transition:0.3s;}
+  .card.selected{box-shadow:0 0 20px gold;transform:scale(1.05);}
+  .chip{position:absolute;width:25px;height:25px;border-radius:50%;background:gold;text-align:center;line-height:25px;animation:drop 0.5s;}
+  @keyframes drop{0%{top:-30px;}100%{top:10px;}}
+  .indicator{position:absolute;width:100%;height:100%;border:3px solid yellow;pointer-events:none;box-sizing:border-box;transition:0.3s;}
+</style>
 </head>
-<body class="bg-gradient-to-br from-purple-400 via-pink-400 to-yellow-300 min-h-screen flex flex-col items-center p-4 font-sans">
-<h1 class="text-4xl font-bold text-white mb-6 text-center animate-bounce">🎲 لعبة الرهان الجماعية</h1>
-
-<div id="balanceDiv" class="text-white text-xl mb-4">رصيدك: ...</div>
-
-<div id="cardsGrid" class="grid grid-cols-2 md:grid-cols-4 gap-4 w-full max-w-4xl mb-4"></div>
-
-<div class="flex gap-4 mb-4">
-<label>اختر مبلغ الرهان:
+<body class="flex flex-col items-center p-4">
+<h1 class="text-4xl font-bold text-white mb-4">🎰 كازينو رهانات جماعي</h1>
+<div id="balanceDiv" class="text-white text-xl mb-2">رصيدك: ...</div>
+<div id="casinoTable"></div>
+<div class="flex gap-2 mt-4">
+<label class="text-white">مبلغ الرهان:
 <select id="betAmount" class="p-2 rounded text-black">
-<option value="10">10</option>
-<option value="20">20</option>
-<option value="50">50</option>
-<option value="100">100</option>
+<option value="10">10</option><option value="20">20</option><option value="50">50</option><option value="100">100</option>
 </select>
 </label>
-<label>اختر المضاعف:
+<label class="text-white">المضاعف:
 <select id="multiplier" class="p-2 rounded text-black">
-<option value="2">×2</option>
-<option value="3">×3</option>
-<option value="20">×20</option>
+<option value="2">×2</option><option value="3">×3</option><option value="20">×20</option>
 </select>
 </label>
 </div>
-
-<button onclick="placeBet()" class="bg-red-500 text-white px-6 py-2 rounded-xl shadow-lg hover:bg-red-600 transition animate-pulse mb-4">🎯 ضع الرهان</button>
-
-<div id="messages" class="text-white text-lg mb-4"></div>
+<button onclick="placeBet()" class="bg-yellow-500 px-4 py-2 rounded mt-2 text-black font-bold">🎯 ضع الرهان</button>
+<div id="messages" class="text-white mt-2"></div>
+<audio id="casinoMusic" src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" loop autoplay></audio>
 
 <script>
 const socket = io();
-let myID;
-let balance = 500; // الرصيد الابتدائي
-let myBet = null;
+let myID; let balance=500; let myBet=null;
+const table = document.getElementById("casinoTable");
+const balanceDiv = document.getElementById("balanceDiv");
+const messages = document.getElementById("messages");
+const betAmount = document.getElementById("betAmount");
+const multiplier = document.getElementById("multiplier");
 
-const cards = ${JSON.stringify(cards)};
-
-// إنشاء شبكة البطاقات
-const cardsGrid = document.getElementById("cardsGrid");
+// إنشاء البطاقات
+cards = ${JSON.stringify(cards)};
 cards.forEach((c,i)=>{
-    const div = document.createElement("div");
-    div.id = "card"+i;
-    div.innerText = c;
-    div.className = "bg-white bg-opacity-80 p-6 rounded-xl shadow-lg text-center cursor-pointer transition hover:scale-105";
-    cardsGrid.appendChild(div);
+  const div=document.createElement("div");
+  div.id="card"+i;
+  div.className="card";
+  div.innerText=c;
+  table.appendChild(div);
 });
 
-// عرض الرصيد
-const balanceDiv = document.getElementById("balanceDiv");
-function updateBalance(){ balanceDiv.innerText = "رصيدك: "+balance; }
+// تحديث الرصيد
+function updateBalance(){ balanceDiv.innerText="رصيدك: "+balance; }
 updateBalance();
 
 // وضع الرهان
 function placeBet(){
-    const cardIndex = prompt("اختر رقم البطاقة (0-"+(cards.length-1)+")")*1;
-    const amount = parseInt(document.getElementById("betAmount").value);
-    const multiplier = parseInt(document.getElementById("multiplier").value);
-    if(cardIndex<0 || cardIndex>=cards.length){ alert("رقم بطاقة غير صالح"); return; }
-    if(amount>balance){ alert("رصيدك لا يكفي"); return; }
-    myBet = { card: cardIndex, amount, multiplier };
-    socket.emit("placeBet", myBet);
-    document.getElementById("messages").innerText="وضعت الرهان على البطاقة "+cardIndex;
+  const cardIndex = prompt("اختر رقم البطاقة (0-"+(cards.length-1)+")")*1;
+  const amount = parseInt(betAmount.value);
+  const multi = parseInt(multiplier.value);
+  if(cardIndex<0||cardIndex>=cards.length){ alert("رقم بطاقة غير صالح"); return;}
+  if(amount>balance){ alert("رصيدك لا يكفي"); return;}
+  myBet={card:cardIndex,amount,multiplier:multi};
+  socket.emit("placeBet",myBet);
+  messages.innerText="وضعت رهانك على البطاقة "+cardIndex;
 }
 
-// استقبال التحديثات من السيرفر
-socket.on("updatePlayers", data => {
+// استقبال تحديثات اللاعبين
+socket.on("updatePlayers", data=>{
+  // تنظيف البطاقات
+  cards.forEach((c,i)=>{
+    const div=document.getElementById("card"+i);
+    div.innerHTML=c;
     data.forEach(p=>{
-        const cardDiv = document.getElementById("card"+p.betCard);
-        if(p.betCard!==undefined){
-            cardDiv.innerText = cards[p.betCard]+" ("+p.username+" يراهن "+p.amount+")";
-        }
+      if(p.betCard===i){
+        const chip=document.createElement("div");
+        chip.className="chip";
+        chip.innerText="💎";
+        div.appendChild(chip);
+      }
     });
+  });
 });
 
-socket.on("roundResult", data => {
-    if(data.winnerID===myID){
-        balance += data.winAmount;
-        alert("🎉 ربح! رصيدك +"+data.winAmount);
-    } else if(data.loserIDs.includes(myID)){
-        balance -= data.loseAmount;
-        alert("💀 خسرت! رصيدك -"+data.loseAmount);
-    } else { alert("🔹 الجولة انتهت"); }
-    myBet = null;
-    updateBalance();
-    // إعادة تعيين البطاقات
-    cards.forEach((c,i)=>{ document.getElementById("card"+i).innerText=c; });
+// استقبال نتيجة الجولة
+socket.on("roundResult", data=>{
+  if(data.winnerIDs.includes(myID)){
+    balance+=data.winAmounts[myID];
+    alert("🎉 فزت! رصيدك +"+data.winAmounts[myID]);
+  }else if(data.loserIDs.includes(myID)){
+    balance-=data.loseAmounts[myID];
+    alert("💀 خسرت! رصيدك -"+data.loseAmounts[myID]);
+  }else alert("🔹 انتهت الجولة");
+  myBet=null; updateBalance();
 });
+
+// إرسال اسم المستخدم وعشوائي
+myID=socket.id;
+socket.emit("setUser",{username:"لاعب"+Math.floor(Math.random()*1000)});
 </script>
 </body>
 </html>
@@ -117,57 +127,56 @@ socket.on("roundResult", data => {
 });
 
 // WebSocket
-let currentBets = [];
-
 io.on("connection", socket=>{
-    console.log("لاعب دخل:", socket.id);
-    players[socket.id] = {id:socket.id, username:"لاعب"+Math.floor(Math.random()*1000), balance:500};
+  players[socket.id]={id:socket.id,username:"لاعب"+Math.floor(Math.random()*1000),balance:500};
+  socket.emit("updatePlayers",Object.values(players));
 
-    socket.emit("updatePlayers", Object.values(players));
+  socket.on("setUser", data=>{
+    if(players[socket.id]) players[socket.id].username=data.username;
+    io.emit("updatePlayers",Object.values(players));
+  });
 
-    socket.on("placeBet", bet=>{
-        players[socket.id].betCard = bet.card;
-        players[socket.id].amount = bet.amount;
-        players[socket.id].multiplier = bet.multiplier;
-        currentBets.push({id:socket.id, ...bet});
-        io.emit("updatePlayers", Object.values(players));
-    });
+  socket.on("placeBet", bet=>{
+    players[socket.id].betCard=bet.card;
+    players[socket.id].amount=bet.amount;
+    players[socket.id].multiplier=bet.multiplier;
+    currentBets.push({id:socket.id,...bet});
+    io.emit("updatePlayers",Object.values(players));
+  });
 
-    socket.on("disconnect", ()=>{
-        delete players[socket.id];
-        io.emit("updatePlayers", Object.values(players));
-    });
+  socket.on("disconnect", ()=>{
+    delete players[socket.id];
+    io.emit("updatePlayers",Object.values(players));
+  });
 });
 
-// تشغيل الجولة كل 15 ثانية
+// جولات كل 15 ثانية
 setInterval(()=>{
-    if(currentBets.length===0) return; // لا رهانات
-    // تحديد البطاقة الفائزة عشوائيا
-    const winningCard = Math.floor(Math.random()*cards.length);
-    const winnerIDs = currentBets.filter(b=>b.card===winningCard).map(b=>b.id);
-    const loserIDs = currentBets.filter(b=>b.card!==winningCard).map(b=>b.id);
+  if(currentBets.length===0) return;
+  const winningCard=Math.floor(Math.random()*cards.length);
+  const winnerIDs=currentBets.filter(b=>b.card===winningCard).map(b=>b.id);
+  const loserIDs=currentBets.filter(b=>b.card!==winningCard).map(b=>b.id);
 
-    // حساب المكاسب والخسائر
-    winnerIDs.forEach(id=>{
-        const p = players[id];
-        const b = currentBets.find(b=>b.id===id);
-        const winAmount = b.amount*b.multiplier;
-        p.balance += winAmount;
-        io.to(id).emit("roundResult",{winnerID:id,winAmount,loserIDs:[],loseAmount:0});
-    });
-    loserIDs.forEach(id=>{
-        const p = players[id];
-        const b = currentBets.find(b=>b.id===id);
-        const loseAmount = b.amount;
-        p.balance -= loseAmount;
-        io.to(id).emit("roundResult",{winnerID:null,loseAmount,loserIDs:[id]});
-    });
+  const winAmounts={},loseAmounts={};
+  winnerIDs.forEach(id=>{
+    const b=currentBets.find(b=>b.id===id);
+    players[id].balance+=b.amount*b.multiplier;
+    winAmounts[id]=b.amount*b.multiplier;
+  });
+  loserIDs.forEach(id=>{
+    const b=currentBets.find(b=>b.id===id);
+    players[id].balance-=b.amount;
+    loseAmounts[id]=b.amount;
+  });
 
-    // إعادة تعيين الجولة
-    currentBets = [];
-    Object.values(players).forEach(p=>{ delete p.betCard; delete p.amount; delete p.multiplier; });
-    io.emit("updatePlayers", Object.values(players));
+  // إرسال النتائج لكل لاعب
+  Object.keys(players).forEach(id=>{
+    io.to(id).emit("roundResult",{winnerIDs,loserIDs,winAmounts,loseAmounts});
+  });
 
+  currentBets=[];
+  Object.values(players).forEach(p=>{delete p.betCard; delete p.amount; delete p.multiplier;});
+  io.emit("updatePlayers",Object.values(players));
 },15000);
 
-server.listen(port, ()=>console.log("Server running on port "+port));
+server.listen(port,()=>console.log("Server running on port "+port));
