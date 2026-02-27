@@ -22,9 +22,14 @@ app.get("/", (req, res) => {
     body { background:#111; color:#fff; font-family:Arial; text-align:center; }
     input, button { padding:10px; margin:5px; }
     #status { margin-top:15px; font-weight:bold; }
+    #info { margin-top:10px; font-size:16px; }
     #chat { margin-top:20px; height:300px; overflow:auto; border:1px solid #444; padding:10px; text-align:left; background:#222; }
-    .message { display:flex; align-items:center; margin-bottom:5px; }
+    .message { display:flex; align-items:center; margin-bottom:5px; transition: transform 0.3s; }
     .message img { width:30px; height:30px; border-radius:50%; margin-right:8px; }
+    .like { color: #ff3860; font-weight:bold; animation: jump 0.5s ease; }
+    .gift { color: #ffd700; font-weight:bold; animation: glow 1s ease; }
+    @keyframes jump { 0% { transform: translateY(0); } 50% { transform: translateY(-10px); } 100% { transform: translateY(0); } }
+    @keyframes glow { 0% { text-shadow: 0 0 5px #ffd700; } 50% { text-shadow: 0 0 15px #ffd700; } 100% { text-shadow: 0 0 5px #ffd700; } }
   </style>
 </head>
 <body>
@@ -65,8 +70,12 @@ app.get("/", (req, res) => {
           const chat = document.getElementById("chat");
           chat.innerHTML = "";
           data.messages.forEach(msg=>{
+            let cls = "";
+            if(msg.text.includes("لايك")) cls="like";
+            else if(msg.text.includes("أرسل")) cls="gift";
+
             chat.innerHTML += \`
-              <div class="message">
+              <div class="message \${cls}">
                 <img src="\${msg.avatar}" onerror="this.src='https://via.placeholder.com/30'">
                 <span>\${msg.text}</span>
               </div>
@@ -120,6 +129,7 @@ app.post("/start", async (req,res)=>{
 
     connection.on("roomUser", data => { viewers = data.viewerCount; });
 
+    // الدردشة العادية
     connection.on("chat", data => {
       messages.push({
         avatar: data.profilePictureUrl || "https://via.placeholder.com/30",
@@ -128,8 +138,17 @@ app.post("/start", async (req,res)=>{
       if(messages.length>50) messages.shift();
     });
 
-    connection.on("like", data => { likes += data.likeCount; });
+    // اللايكات مباشرة في الدردشة مع تأثير
+    connection.on("like", data => {
+      likes += data.likeCount;
+      messages.push({
+        avatar: "https://via.placeholder.com/30",
+        text: `❤️ حصلنا على ${data.likeCount} لايك جديد!`
+      });
+      if(messages.length>50) messages.shift();
+    });
 
+    // الهدايا مباشرة في الدردشة مع تأثير
     connection.on("gift", data => {
       gifts += data.repeatCount || 1;
       messages.push({
@@ -139,6 +158,7 @@ app.post("/start", async (req,res)=>{
       if(messages.length>50) messages.shift();
     });
 
+    // معلومات البث
     connection.on("roomInfo", data => {
       roomInfo = {
         title: data.room.title,
