@@ -20,7 +20,8 @@ app.get("/", (req, res) => {
     input, button { padding:10px; margin:5px; }
     #status { margin-top:15px; font-weight:bold; }
     #chat { margin-top:20px; height:300px; overflow:auto; border:1px solid #444; padding:10px; text-align:left; background:#222; }
-    #localChat { margin-top:10px; }
+    .message { display:flex; align-items:center; margin-bottom:5px; }
+    .message img { width:30px; height:30px; border-radius:50%; margin-right:8px; }
   </style>
 </head>
 <body>
@@ -59,7 +60,12 @@ app.get("/", (req, res) => {
           const chat = document.getElementById("chat");
           chat.innerHTML = "";
           data.messages.forEach(msg=>{
-            chat.innerHTML += msg + "<br>";
+            chat.innerHTML += \`
+              <div class="message">
+                <img src="\${msg.avatar}" onerror="this.src='https://via.placeholder.com/30'">
+                <span>\${msg.text}</span>
+              </div>
+            \`;
           });
           chat.scrollTop = chat.scrollHeight;
         });
@@ -102,8 +108,12 @@ app.post("/start", async (req,res)=>{
     await connection.connect();
 
     connection.on("roomUser", data => { viewers = data.viewerCount; });
+
     connection.on("chat", data => {
-      messages.push("💬 " + data.nickname + ": " + data.comment);
+      messages.push({
+        avatar: data.profilePictureUrl || "https://via.placeholder.com/30",
+        text: "💬 " + data.nickname + ": " + data.comment
+      });
       if(messages.length>50) messages.shift();
     });
 
@@ -123,7 +133,10 @@ app.post("/localChat",(req,res)=>{
   const msg = req.body.message;
   if(!msg) return res.json({ error:"❌ الرسالة فارغة" });
 
-  messages.push("📝 أنت: " + msg);
+  messages.push({
+    avatar: "https://via.placeholder.com/30",
+    text: "📝 أنت: " + msg
+  });
   if(messages.length>50) messages.shift();
   res.json({ status:"ok" });
 });
