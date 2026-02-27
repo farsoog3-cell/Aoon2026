@@ -33,7 +33,7 @@ app.get("/", (req, res) => {
   <div id="status">⏳ لم يتم الاتصال بعد</div>
   <div id="chat"></div>
 
-  <h3>محاكاة إرسال رسالة:</h3>
+  <h3>إرسال رسالة حقيقية للبث:</h3>
   <input id="message" placeholder="اكتب رسالتك هنا">
   <button onclick="sendMessage()">أرسل</button>
 
@@ -72,7 +72,6 @@ app.get("/", (req, res) => {
         }
         document.getElementById("status").innerText="✅ متصل بالبث";
 
-        // بدء polling لتحديث المشاهدين والرسائل
         if(pollingInterval) clearInterval(pollingInterval);
         pollingInterval = setInterval(()=>{
           fetch("/data")
@@ -166,17 +165,28 @@ app.get("/data",(req,res)=>{
   res.json({ viewers, messages });
 });
 
-// إضافة رسالة محلية (محاكاة)
-app.post("/localChat",(req,res)=>{
+// إرسال رسالة حقيقية للبث
+app.post("/localChat", async (req,res)=>{
   const msg = req.body.message;
   if(!msg) return res.json({ error:"❌ الرسالة فارغة" });
 
-  messages.push({
-    avatar: "https://via.placeholder.com/30",
-    text: "📝 أنت: " + msg
-  });
-  if(messages.length>50) messages.shift();
-  res.json({ status:"ok" });
+  if(!connection){
+    return res.json({ error:"❌ لم يتم الاتصال بالبث" });
+  }
+
+  try{
+    await connection.sendComment(msg); // إرسال للبث المباشر
+    messages.push({
+      avatar: "https://via.placeholder.com/30",
+      text: "📝 أنت: " + msg
+    });
+    if(messages.length>50) messages.shift();
+
+    res.json({ status:"ok" });
+  }catch(err){
+    console.log(err);
+    res.json({ error:"❌ فشل إرسال الرسالة" });
+  }
 });
 
 const PORT = process.env.PORT || 3000;
