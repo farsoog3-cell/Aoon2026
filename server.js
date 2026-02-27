@@ -1,13 +1,15 @@
 const express = require("express");
 const { WebcastPushConnection } = require("tiktok-live-connector");
+const http = require("http");
+const { Server } = require("socket.io");
 
 const app = express();
+const server = http.createServer(app);
+const io = new Server(server);
+
 app.use(express.json());
 
-let connection = null;
-let viewers = 0;
-let messages = [];
-let isConnected = false;
+let connections = {}; // لتخزين كل اتصال للبثوص
 
 // الصفحة
 app.get("/", (req, res) => {
@@ -32,100 +34,104 @@ input,button{padding:10px;margin:5px}
 <div id="status">غير متصل</div>
 <div id="chat"></div>
 
+<script src="/socket.io/socket.io.js"></script>
 <script>
-let interval;
+const socket = io();
+let currentUser = "";
 
 function start(){
   const username = document.getElementById("username").value.trim();
   if(!username) return alert("اكتب اسم الحساب");
-
-  fetch("/start",{
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({username})
-  })
-  .then(res=>res.json())
-  .then(data=>{
-    if(data.error){
-      document.getElementById("status").innerText=data.error;
-      return;
-    }
-
-    document.getElementById("status").innerText="متصل ✔";
-
-    if(interval) clearInterval(interval);
-    interval=setInterval(loadData,1500);
-  });
+  currentUser = username;
+  socket.emit("start", {username});
 }
 
-function loadData(){
-  fetch("/data")
-  .then(res=>res.json())
-  .then(data=>{
-    document.getElementById("status").innerText="👀 "+data.viewers+" مشاهد";
+socket.on("connected", (data) => {
+  if(data.username !== currentUser) return;
+  document.getElementById("status").innerText = "متصل ✔";
+});
 
-    const chat=document.getElementById("chat");
-    chat.innerHTML="";
-    data.messages.forEach(m=>{
-      chat.innerHTML+="<div>"+m+"</div>";
-    });
-    chat.scrollTop=chat.scrollHeight;
+socket.on("update", (data) => {
+  if(data.username !== currentUser) return;
+  document.getElementById("status").innerText = "👀 "+data.viewers+" مشاهد";
+
+  const chat=document.getElementById("chat");
+  chat.innerHTML="";
+  data.messages.forEach(m=>{
+    chat.innerHTML+="<div>"+m+"</div>";
   });
-}
+  chat.scrollTop=chat.scrollHeight;
+});
+
+socket.on("errorMsg", (data) => {
+  if(data.username !== currentUser) return;
+  document.getElementById("status").innerText = data.error;
+});
 </script>
 
 </body>
 </html>
-`);
+  `);
 });
 
-// بدء الاتصال
-app.post("/start", async (req,res)=>{
-  const username = req.body.username;
-  if(!username) return res.json({error:"اكتب اسم الحساب"});
+// بدء الاتصال عبر WebSocket
+io.on("connection", (socket) => {
+  socket.on("start", async ({username}) => {
+    if(!username) return socket.emit("errorMsg", {username, error:"اكتب اسم الحساب"});
 
-  try{
-    if(connection){
-      connection.disconnect();
-      connection=null;
+    try {
+      // إذا هناك اتصال سابق، افصله
+      if(connections[username]) {
+        connections[username].connection.disconnect();
+        delete connections[username];
+      }
+
+      let viewers = 0;
+      let messages = [];
+
+      const connection = new WebcastPushConnection(username, {
+        processInitialData: true,
+        enableExtendedGiftInfo: true
+      });
+
+      await connection.connect();
+
+      connections[username] = { connection, viewers, messages };
+
+      // إعلام الواجهة بأننا متصلين
+      socket.emit("connected", {username});
+
+      // تحديث المشاهدات
+      connection.on("roomUser", data => {
+        viewers = data.viewerCount || 0;
+        connections[username].viewers = viewers;
+        socket.emit("update", {username, viewers, messages});
+      });
+
+      // تحديث الدردشة
+      connection.on("chat", data => {
+        messages.push(data.nickname + ": " + data.comment);
+        if(messages.length > 100) messages.shift();
+        connections[username].messages = messages;
+        socket.emit("update", {username, viewers, messages});
+      });
+
+      connection.on("disconnected", () => {
+        delete connections[username];
+        socket.emit("errorMsg", {username, error:"تم فصل البث"});
+      });
+
+      connection.on("error", (err) => {
+        console.log("TikTok ERROR:", err);
+        socket.emit("errorMsg", {username, error:"حدث خطأ أثناء الاتصال"});
+      });
+
+    } catch(err) {
+      console.log("ERROR:", err);
+      socket.emit("errorMsg", {username, error:"فشل الاتصال بالبث"});
     }
-
-    viewers=0;
-    messages=[];
-    isConnected=false;
-
-    connection = new WebcastPushConnection(username,{
-      processInitialData:true,
-      enableExtendedGiftInfo:true
-    });
-
-    await connection.connect();
-    isConnected=true;
-
-    connection.on("roomUser", data=>{
-      viewers=data.viewerCount || 0;
-    });
-
-    connection.on("chat", data=>{
-      messages.push(data.nickname+": "+data.comment);
-      if(messages.length>100) messages.shift();
-    });
-
-    connection.on("disconnected", ()=>{
-      isConnected=false;
-    });
-
-    res.json({status:"connected"});
-
-  }catch(err){
-    console.log("ERROR:",err);
-    res.json({error:"فشل الاتصال بالبث"});
-  }
+  });
 });
 
-app.get("/data",(req,res)=>{
-  res.json({viewers,messages});
-});
-
-const PORT=3000;
-app.listen(PORT,()=>console.log("Running on http://localhost:3000"));
+const PORT = 3000;
+server.listen(PORT, () => console.log("Running on http://localhost:3000"));
