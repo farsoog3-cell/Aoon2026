@@ -98,17 +98,14 @@ io.on("connection", (socket) => {
 
       connections[username] = { connection, viewers, messages };
 
-      // إعلام الواجهة بأننا متصلين
       socket.emit("connected", {username});
 
-      // تحديث المشاهدات
       connection.on("roomUser", data => {
         viewers = data.viewerCount || 0;
         connections[username].viewers = viewers;
         socket.emit("update", {username, viewers, messages});
       });
 
-      // تحديث الدردشة
       connection.on("chat", data => {
         messages.push(data.nickname + ": " + data.comment);
         if(messages.length > 100) messages.shift();
@@ -133,5 +130,5 @@ io.on("connection", (socket) => {
   });
 });
 
-const PORT = 3000;
-server.listen(PORT, () => console.log("Running on http://localhost:3000"));
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => console.log("Running on port", PORT));
