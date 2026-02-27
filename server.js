@@ -29,6 +29,10 @@ app.get("/", (req, res) => {
     <div id="status"></div>
     <div id="chat"></div>
 
+    <h3>إرسال رسالة إلى البث:</h3>
+    <input id="message" placeholder="اكتب رسالتك هنا">
+    <button onclick="sendMessage()">أرسل</button>
+
     <script>
       function start() {
         const username = document.getElementById("username").value;
@@ -62,6 +66,23 @@ app.get("/", (req, res) => {
           });
         }, 2000);
       }
+
+      function sendMessage() {
+        const msg = document.getElementById("message").value;
+        fetch("/send", {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({ message: msg })
+        })
+        .then(res => res.json())
+        .then(data => {
+          if(data.error){
+            alert(data.error);
+          } else {
+            document.getElementById("message").value = "";
+          }
+        });
+      }
     </script>
   </body>
   </html>
@@ -71,13 +92,9 @@ app.get("/", (req, res) => {
 app.post("/start", async (req, res) => {
   const username = req.body.username;
 
-  if (!username) {
-    return res.json({ error: "❌ أدخل اسم الحساب" });
-  }
+  if (!username) return res.json({ error: "❌ أدخل اسم الحساب" });
 
-  if (connection) {
-    connection.disconnect();
-  }
+  if (connection) connection.disconnect();
 
   viewers = 0;
   messages = [];
@@ -103,11 +120,21 @@ app.post("/start", async (req, res) => {
   }
 });
 
+// إرسال رسالة إلى البث
+app.post("/send", (req, res) => {
+  const msg = req.body.message;
+  if (!msg || !connection) return res.json({ error: "❌ لا يوجد اتصال بالبث أو الرسالة فارغة" });
+
+  try {
+    connection.sendComment(msg);
+    res.json({ status: "sent" });
+  } catch (err) {
+    res.json({ error: "❌ فشل إرسال الرسالة" });
+  }
+});
+
 app.get("/data", (req, res) => {
-  res.json({
-    viewers,
-    messages
-  });
+  res.json({ viewers, messages });
 });
 
 const PORT = process.env.PORT || 3000;
