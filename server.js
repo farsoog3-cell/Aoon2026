@@ -37,9 +37,12 @@ app.get("/", (req, res) => {
   <button onclick="sendMessage()">أرسل</button>
 
   <script>
+    let intervalId;
+
     function start() {
       const username = document.getElementById("username").value;
       document.getElementById("status").innerText = "⏳ جاري الاتصال...";
+      
       fetch("/start", {
         method:"POST",
         headers: {"Content-Type":"application/json"},
@@ -47,29 +50,35 @@ app.get("/", (req, res) => {
       })
       .then(res=>res.json())
       .then(data=>{
-        if(data.error){ document.getElementById("status").innerText=data.error; }
-        else { document.getElementById("status").innerText="✅ متصل بالبث"; }
+        if(data.error){
+          document.getElementById("status").innerText = data.error;
+        } else {
+          document.getElementById("status").innerText="✅ متصل بالبث";
+          
+          // تنظيف أي interval سابق
+          if(intervalId) clearInterval(intervalId);
+
+          intervalId = setInterval(()=>{
+            fetch("/data")
+            .then(res=>res.json())
+            .then(data=>{
+              document.getElementById("status").innerText = "👀 المشاهدين الآن: "+data.viewers;
+
+              const chat = document.getElementById("chat");
+              chat.innerHTML = "";
+              data.messages.forEach(msg=>{
+                chat.innerHTML += \`
+                  <div class="message">
+                    <img src="\${msg.avatar}" onerror="this.src='https://via.placeholder.com/30'">
+                    <span>\${msg.text}</span>
+                  </div>
+                \`;
+              });
+              chat.scrollTop = chat.scrollHeight;
+            });
+          }, 2000);
+        }
       });
-
-      setInterval(()=>{
-        fetch("/data")
-        .then(res=>res.json())
-        .then(data=>{
-          document.getElementById("status").innerText = "👀 المشاهدين الآن: "+data.viewers;
-
-          const chat = document.getElementById("chat");
-          chat.innerHTML = "";
-          data.messages.forEach(msg=>{
-            chat.innerHTML += \`
-              <div class="message">
-                <img src="\${msg.avatar}" onerror="this.src='https://via.placeholder.com/30'">
-                <span>\${msg.text}</span>
-              </div>
-            \`;
-          });
-          chat.scrollTop = chat.scrollHeight;
-        });
-      }, 2000);
     }
 
     function sendMessage() {
@@ -97,6 +106,7 @@ app.post("/start", async (req,res)=>{
   const username = req.body.username;
   if(!username) return res.json({ error: "❌ أدخل اسم الحساب" });
 
+  // فصل أي اتصال سابق
   if(connection) connection.disconnect();
 
   viewers = 0;
@@ -114,7 +124,7 @@ app.post("/start", async (req,res)=>{
         avatar: data.profilePictureUrl || "https://via.placeholder.com/30",
         text: "💬 " + data.nickname + ": " + data.comment
       });
-      if(messages.length>50) messages.shift();
+      if(messages.length > 50) messages.shift();
     });
 
     res.json({ status:"connected" });
@@ -137,9 +147,10 @@ app.post("/localChat",(req,res)=>{
     avatar: "https://via.placeholder.com/30",
     text: "📝 أنت: " + msg
   });
-  if(messages.length>50) messages.shift();
+  if(messages.length > 50) messages.shift();
+
   res.json({ status:"ok" });
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, ()=>console.log("Server running"));
+app.listen(PORT, ()=>console.log(`Server running on port ${PORT}`));
