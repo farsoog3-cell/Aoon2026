@@ -1,12 +1,11 @@
 {
-  "name": "tiktok-live-server",
+  "name": "tiktok-console",
   "version": "1.0.0",
-  "type": "commonjs",
+  "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
-    "express": "^4.18.2",
-    "tiktok-live-connector": "^2.0.1"
+    "tiktok-live-connector": "^2.0.0"
   }
 }
