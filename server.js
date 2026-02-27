@@ -1,41 +1,65 @@
 const { WebcastPushConnection } = require("tiktok-live-connector");
 const readline = require("readline");
 
-// واجهة بسيطة لإدخال اسم المستخدم من الـ Console
+// حماية الأخطاء غير المتوقعة
+process.on('unhandledRejection', (reason) => {
+    console.error('Unhandled Rejection:', reason);
+});
+
+process.on('uncaughtException', (err) => {
+    console.error('Uncaught Exception:', err);
+});
+
+// واجهة لإدخال اسم المستخدم
 const rl = readline.createInterface({
-  input: process.stdin,
-  output: process.stdout
+    input: process.stdin,
+    output: process.stdout
 });
 
-rl.question("🔹 أدخل اسم مستخدم تيك توك للبث: ", async (TIKTOK_USERNAME) => {
-  
-  console.log(`🚀 محاولة الاتصال ببث ${TIKTOK_USERNAME}...`);
+function startStream(username) {
+    console.log(`🚀 محاولة الاتصال ببث ${username}...`);
 
-  const connection = new WebcastPushConnection(TIKTOK_USERNAME);
+    try {
+        const connection = new WebcastPushConnection(username);
 
-  // عند انتهاء البث
-  connection.on("streamEnd", () => {
-    console.log("⚠️ انتهى البث أو تم إغلاقه.");
-    process.exit(0);
-  });
+        connection.on("streamEnd", () => {
+            console.log("⚠️ انتهى البث أو تم إغلاقه.");
+        });
 
-  // عند تحديث عدد المشاهدين
-  connection.on("viewerCountUpdate", (count) => {
-    console.clear();
-    console.log(`👀 عدد المشاهدين الآن: ${count}`);
-    console.log("📩 أحدث الرسائل:\n");
-  });
+        connection.on("viewerCountUpdate", (count) => {
+            console.clear();
+            console.log(`👀 عدد المشاهدين الآن: ${count}`);
+            console.log("📩 أحدث الرسائل:\n");
+        });
 
-  // عند وصول رسالة جديدة
-  connection.on("chat", (data) => {
-    console.log(`🗨️ ${data.user.uniqueId} (${data.user.avatarThumb}) : ${data.comment}`);
-  });
+        connection.on("chat", (data) => {
+            console.log(`🗨️ ${data.user.uniqueId} (${data.user.avatarThumb}) : ${data.comment}`);
+        });
 
-  try {
-    await connection.connect();
-    console.log("✅ تم الاتصال بالبث بنجاح!");
-  } catch (err) {
-    console.error("❌ حدث خطأ أثناء الاتصال بالبث:", err.message);
-    process.exit(1);
-  }
-});
+        connection.connect()
+            .then(() => console.log("✅ تم الاتصال بالبث بنجاح!"))
+            .catch(err => {
+                console.error("❌ لم أستطع الاتصال بالبث. ربما لا يوجد بث مباشر الآن.");
+                console.error(err.message);
+            });
+
+    } catch (err) {
+        console.error("❌ حدث خطأ:", err.message);
+    }
+}
+
+// طلب اسم المستخدم من Terminal
+function askUsername() {
+    rl.question("🔹 أدخل اسم مستخدم تيك توك للبث: ", (username) => {
+        if (!username) {
+            console.log("❌ اسم المستخدم مطلوب!");
+            askUsername();
+            return;
+        }
+        startStream(username);
+        // يمكن إعادة المحاولة إذا فشل الاتصال
+        askUsername();
+    });
+}
+
+askUsername();
