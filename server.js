@@ -10,6 +10,7 @@ let likes = 0;
 let gifts = 0;
 let messages = [];
 let giftMessages = [];
+let hearts = 0;
 let roomInfo = {};
 
 app.get("/", (req, res) => {
@@ -21,12 +22,12 @@ app.get("/", (req, res) => {
   <style>
     body { background:#111; color:#fff; font-family:Arial; margin:0; overflow:hidden; }
     .container { display:flex; height:100vh; }
-    .main { flex:3; padding:10px; }
+    .main { flex:3; padding:10px; display:flex; flex-direction:column; }
     .sidebar { flex:1; border-left:1px solid #444; padding:10px; background:#1a1a1a; overflow-y:auto; position:relative; }
     input, button { padding:10px; margin:5px; }
-    #status { margin-top:15px; font-weight:bold; }
-    #info { margin-top:10px; font-size:16px; }
-    #chat { margin-top:20px; height:70%; overflow:auto; border:1px solid #444; padding:10px; text-align:left; background:#222; }
+    #status { margin-top:5px; font-weight:bold; }
+    #info { margin-top:5px; font-size:16px; }
+    #chat { margin-top:10px; flex:1; overflow:auto; border:1px solid #444; padding:10px; text-align:left; background:#222; display:flex; flex-direction:column-reverse; }
     .message { display:flex; align-items:center; margin-bottom:5px; }
     .message img { width:30px; height:30px; border-radius:50%; margin-right:8px; }
     /* فقاعات الهدايا */
@@ -49,6 +50,20 @@ app.get("/", (req, res) => {
     @keyframes floatUp {
       0% { bottom:0; opacity:1; }
       100% { bottom:300px; opacity:0; }
+    }
+    /* قلوب حمراء */
+    .heart {
+      position: absolute;
+      width: 25px;
+      height: 25px;
+      color: red;
+      font-size:25px;
+      animation: riseHeart 2s linear forwards;
+    }
+    @keyframes riseHeart {
+      0% { bottom:0; opacity:1; transform: scale(1) rotate(0deg); }
+      50% { transform: scale(1.2) rotate(15deg); }
+      100% { bottom:300px; opacity:0; transform: scale(1) rotate(0deg); }
     }
   </style>
 </head>
@@ -93,7 +108,7 @@ app.get("/", (req, res) => {
         .then(res=>res.json())
         .then(data=>{
           document.getElementById("status").innerText = "👀 المشاهدين الآن: "+data.viewers;
-          document.getElementById("info").innerHTML = "❤️ لايكات: "+data.likes+"<br>ℹ️ العنوان: "+(data.roomInfo.title || "غير معروف")+" | المكان: "+(data.roomInfo.location || "غير معروف")+" | الوقت: "+(data.roomInfo.startTime || "غير معروف");
+          document.getElementById("info").innerHTML = "❤️ قلوب: "+data.hearts+"<br>ℹ️ العنوان: "+(data.roomInfo.title || "غير معروف")+" | المكان: "+(data.roomInfo.location || "غير معروف")+" | الوقت: "+(data.roomInfo.startTime || "غير معروف");
 
           // الدردشة
           const chat = document.getElementById("chat");
@@ -106,7 +121,6 @@ app.get("/", (req, res) => {
               </div>
             \`;
           });
-          chat.scrollTop = chat.scrollHeight;
 
           // فقاعات الهدايا
           const giftContainer = document.getElementById("giftContainer");
@@ -114,10 +128,20 @@ app.get("/", (req, res) => {
             const bubble = document.createElement("div");
             bubble.className = "gift-bubble";
             bubble.innerHTML = \`<img src="\${gmsg.avatar}" onerror="this.src='https://via.placeholder.com/20'">\${gmsg.text}\`;
-            bubble.style.left = Math.random() * 80 + "%"; // مواقع عشوائية على العرض
+            bubble.style.left = Math.random() * 80 + "%";
             giftContainer.appendChild(bubble);
             setTimeout(()=>{ giftContainer.removeChild(bubble); }, 2000);
           });
+
+          // قلوب متحركة
+          for(let i=0; i<data.hearts; i++){
+            const heart = document.createElement("div");
+            heart.className = "heart";
+            heart.style.left = Math.random() * 90 + "%";
+            heart.innerHTML = "❤️";
+            document.body.appendChild(heart);
+            setTimeout(()=>{ document.body.removeChild(heart); }, 2000);
+          }
         });
       }, 2000);
     }
@@ -154,6 +178,7 @@ app.post("/start", async (req,res)=>{
   viewers = 0;
   likes = 0;
   gifts = 0;
+  hearts = 0;
   messages = [];
   giftMessages = [];
   roomInfo = {};
@@ -173,14 +198,8 @@ app.post("/start", async (req,res)=>{
       if(messages.length>50) messages.shift();
     });
 
-    connection.on("like", data => {
-      likes += data.likeCount;
-      messages.push({
-        avatar: "https://via.placeholder.com/30",
-        text: `❤️ حصلنا على ${data.likeCount} لايك جديد!`
-      });
-      if(messages.length>50) messages.shift();
-    });
+    // اللايكات الآن تتحول إلى قلوب حمراء
+    connection.on("like", data => { hearts += data.likeCount; });
 
     connection.on("gift", data => {
       gifts += data.repeatCount || 1;
@@ -207,7 +226,7 @@ app.post("/start", async (req,res)=>{
 });
 
 app.get("/data",(req,res)=>{
-  res.json({ viewers, likes, gifts, messages, giftMessages, roomInfo });
+  res.json({ viewers, gifts, messages, giftMessages, hearts, roomInfo });
 });
 
 app.post("/localChat",(req,res)=>{
