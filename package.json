@@ -1,7 +1,12 @@
 {
-  "name": "multiplayer-dice-game",
+  "name": "pro-load-tester",
   "version": "1.0.0",
+  "description": "Professional Load Testing Dashboard",
   "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js"
+  },
   "dependencies": {
     "express": "^4.18.2",
     "socket.io": "^4.7.2"
