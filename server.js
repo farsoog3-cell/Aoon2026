@@ -1,13 +1,12 @@
-// server.js
 const express = require("express");
-const puppeteer = require("puppeteer");
+const { WebcastPushConnection } = require("tiktok-live-connector");
 
 const app = express();
 app.use(express.json());
 
-let bot = null;
-let messages = [];
+let connection = null;
 let viewers = 0;
+let messages = [];
 
 // صفحة الويب
 app.get("/", (req, res) => {
@@ -27,70 +26,64 @@ app.get("/", (req, res) => {
 </head>
 <body>
   <h2>مراقبة بث TikTok</h2>
-  <input id="liveUrl" placeholder="ضع رابط البث المباشر هنا">
+  <input id="username" placeholder="اكتب اسم الحساب فقط">
   <button onclick="start()">ابدأ البث</button>
 
   <div id="status">⏳ لم يتم الاتصال بعد</div>
   <div id="chat"></div>
 
-  <h3>إرسال رسالة حقيقية للبث:</h3>
+  <h3>محاكاة إرسال رسالة:</h3>
   <input id="message" placeholder="اكتب رسالتك هنا">
   <button onclick="sendMessage()">أرسل</button>
 
   <script>
-    function renderMessages(){
-      const chat = document.getElementById("chat");
-      chat.innerHTML = "";
-      fetch("/data")
+    function start() {
+      const username = document.getElementById("username").value;
+      document.getElementById("status").innerText = "⏳ جاري الاتصال...";
+      fetch("/start", {
+        method:"POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({ username })
+      })
+      .then(res=>res.json())
+      .then(data=>{
+        if(data.error){ document.getElementById("status").innerText=data.error; }
+        else { document.getElementById("status").innerText="✅ متصل بالبث"; }
+      });
+
+      setInterval(()=>{
+        fetch("/data")
         .then(res=>res.json())
         .then(data=>{
+          document.getElementById("status").innerText = "👀 المشاهدين الآن: "+data.viewers;
+
+          const chat = document.getElementById("chat");
+          chat.innerHTML = "";
           data.messages.forEach(msg=>{
             chat.innerHTML += \`
               <div class="message">
-                <img src="https://via.placeholder.com/30">
+                <img src="\${msg.avatar}" onerror="this.src='https://via.placeholder.com/30'">
                 <span>\${msg.text}</span>
               </div>
             \`;
           });
           chat.scrollTop = chat.scrollHeight;
         });
+      }, 2000);
     }
 
-    function start(){
-      const liveUrl = document.getElementById("liveUrl").value.trim();
-      if(!liveUrl) return alert("❌ أدخل رابط البث");
-
-      fetch("/startBot", {
-        method:"POST",
-        headers: {"Content-Type":"application/json"},
-        body: JSON.stringify({ liveUrl })
-      })
-      .then(res=>res.json())
-      .then(data=>{
-        if(data.error) document.getElementById("status").innerText = data.error;
-        else document.getElementById("status").innerText = "✅ البوت جاهز لإرسال الرسائل";
-      });
-
-      // تحديث الرسائل كل ثانيتين
-      setInterval(renderMessages, 2000);
-    }
-
-    function sendMessage(){
-      const msgInput = document.getElementById("message");
-      const msg = msgInput.value.trim();
+    function sendMessage() {
+      const msg = document.getElementById("message").value.trim();
       if(!msg) return;
-
-      fetch("/sendMessage", {
+      fetch("/localChat", {
         method:"POST",
         headers: {"Content-Type":"application/json"},
         body: JSON.stringify({ message: msg })
-      })
-      .then(res=>res.json())
+      }).then(res=>res.json())
       .then(data=>{
         if(!data.error){
-          msgInput.value = "";
-          renderMessages();
-        } else alert(data.error);
+          document.getElementById("message").value="";
+        }
       });
     }
   </script>
@@ -99,69 +92,54 @@ app.get("/", (req, res) => {
   `);
 });
 
-// بدء البوت Puppeteer
-app.post("/startBot", async (req,res)=>{
-  const { liveUrl } = req.body;
-  if(!liveUrl) return res.json({ error:"❌ رابط البث فارغ" });
+// بدء الاتصال بالبث
+app.post("/start", async (req,res)=>{
+  const username = req.body.username;
+  if(!username) return res.json({ error: "❌ أدخل اسم الحساب" });
+
+  if(connection) connection.disconnect();
+
+  viewers = 0;
+  messages = [];
+
+  connection = new WebcastPushConnection(username);
 
   try{
-    const browser = await puppeteer.launch({ headless:false });
-    const page = await browser.newPage();
-    await page.setViewport({ width:1280, height:800 });
+    await connection.connect();
 
-    await page.goto('https://www.tiktok.com/login');
-    console.log("⏳ سجّل الدخول يدويًا الآن...");
-    await page.waitForTimeout(30000); // وقت لتسجيل الدخول يدوياً
+    connection.on("roomUser", data => { viewers = data.viewerCount; });
 
-    await page.goto(liveUrl, { waitUntil: 'networkidle2' });
-    console.log("✅ البث جاهز لإرسال الرسائل");
+    connection.on("chat", data => {
+      messages.push({
+        avatar: data.profilePictureUrl || "https://via.placeholder.com/30",
+        text: "💬 " + data.nickname + ": " + data.comment
+      });
+      if(messages.length>50) messages.shift();
+    });
 
-    bot = {
-      page,
-      browser,
-      sendMessage: async (msg)=>{
-        try{
-          const inputSelector = 'div[data-e2e="live-chat-input"] div[contenteditable="true"]';
-          await page.waitForSelector(inputSelector, { timeout:5000 });
-          await page.focus(inputSelector);
-          await page.keyboard.type(msg, { delay:50 });
-          await page.keyboard.press('Enter');
-
-          // حفظ الرسالة محليًا
-          messages.push({ text: "📝 أنت: " + msg });
-          if(messages.length>50) messages.shift();
-        }catch(err){
-          console.log("❌ فشل إرسال الرسالة:", err.message);
-        }
-      }
-    };
-
-    res.json({ status:"ok" });
+    res.json({ status:"connected" });
   }catch(err){
-    console.log(err);
-    res.json({ error:"❌ فشل بدء البوت" });
+    res.json({ error:"❌ الحساب غير مباشر أو فشل الاتصال" });
   }
 });
 
-// إرسال رسالة حقيقية
-app.post("/sendMessage", async (req,res)=>{
-  const { message: msg } = req.body;
-  if(!msg) return res.json({ error:"❌ الرسالة فارغة" });
-  if(!bot) return res.json({ error:"❌ البوت غير متصل" });
-
-  try{
-    await bot.sendMessage(msg);
-    res.json({ status:"ok" });
-  }catch(err){
-    console.log(err);
-    res.json({ error:"❌ فشل إرسال الرسالة" });
-  }
-});
-
-// بيانات الرسائل للواجهة
+// إعادة بيانات البث
 app.get("/data",(req,res)=>{
-  res.json({ messages });
+  res.json({ viewers, messages });
+});
+
+// إضافة رسالة محلية (محاكاة)
+app.post("/localChat",(req,res)=>{
+  const msg = req.body.message;
+  if(!msg) return res.json({ error:"❌ الرسالة فارغة" });
+
+  messages.push({
+    avatar: "https://via.placeholder.com/30",
+    text: "📝 أنت: " + msg
+  });
+  if(messages.length>50) messages.shift();
+  res.json({ status:"ok" });
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, ()=>console.log("Server running on port "+PORT));
+app.listen(PORT, ()=>console.log("Server running"));
