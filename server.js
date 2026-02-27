@@ -1,3 +1,4 @@
+// server.js
 const express = require("express");
 const { WebcastPushConnection } = require("tiktok-live-connector");
 
@@ -37,8 +38,26 @@ app.get("/", (req, res) => {
   <button onclick="sendMessage()">أرسل</button>
 
   <script>
+    let pollingInterval = null;
+
+    function renderMessages(data){
+      const chat = document.getElementById("chat");
+      chat.innerHTML = "";
+      data.messages.forEach(msg=>{
+        chat.innerHTML += \`
+          <div class="message">
+            <img src="\${msg.avatar}" onerror="this.src='https://via.placeholder.com/30'">
+            <span>\${msg.text}</span>
+          </div>
+        \`;
+      });
+      chat.scrollTop = chat.scrollHeight;
+    }
+
     function start() {
-      const username = document.getElementById("username").value;
+      const username = document.getElementById("username").value.trim();
+      if(!username) return alert("❌ أدخل اسم الحساب");
+
       document.getElementById("status").innerText = "⏳ جاري الاتصال...";
       fetch("/start", {
         method:"POST",
@@ -47,42 +66,50 @@ app.get("/", (req, res) => {
       })
       .then(res=>res.json())
       .then(data=>{
-        if(data.error){ document.getElementById("status").innerText=data.error; }
-        else { document.getElementById("status").innerText="✅ متصل بالبث"; }
-      });
+        if(data.error){
+          document.getElementById("status").innerText=data.error;
+          return;
+        }
+        document.getElementById("status").innerText="✅ متصل بالبث";
 
-      setInterval(()=>{
-        fetch("/data")
-        .then(res=>res.json())
-        .then(data=>{
-          document.getElementById("status").innerText = "👀 المشاهدين الآن: "+data.viewers;
-
-          const chat = document.getElementById("chat");
-          chat.innerHTML = "";
-          data.messages.forEach(msg=>{
-            chat.innerHTML += \`
-              <div class="message">
-                <img src="\${msg.avatar}" onerror="this.src='https://via.placeholder.com/30'">
-                <span>\${msg.text}</span>
-              </div>
-            \`;
+        // بدء polling لتحديث المشاهدين والرسائل
+        if(pollingInterval) clearInterval(pollingInterval);
+        pollingInterval = setInterval(()=>{
+          fetch("/data")
+          .then(res=>res.json())
+          .then(data=>{
+            document.getElementById("status").innerText = "👀 المشاهدين الآن: "+data.viewers;
+            renderMessages(data);
           });
-          chat.scrollTop = chat.scrollHeight;
-        });
-      }, 2000);
+        }, 2000);
+      });
     }
 
     function sendMessage() {
-      const msg = document.getElementById("message").value.trim();
+      const msgInput = document.getElementById("message");
+      const msg = msgInput.value.trim();
       if(!msg) return;
+
       fetch("/localChat", {
         method:"POST",
         headers: {"Content-Type":"application/json"},
         body: JSON.stringify({ message: msg })
-      }).then(res=>res.json())
-      .then(data=>{
+      })
+      .then(res => res.json())
+      .then(data => {
         if(!data.error){
-          document.getElementById("message").value="";
+          // أضف الرسالة فورًا للـ chat
+          const chat = document.getElementById("chat");
+          chat.innerHTML += \`
+            <div class="message">
+              <img src="https://via.placeholder.com/30">
+              <span>📝 أنت: \${msg}</span>
+            </div>
+          \`;
+          chat.scrollTop = chat.scrollHeight;
+          msgInput.value = "";
+        } else {
+          alert(data.error);
         }
       });
     }
@@ -97,7 +124,10 @@ app.post("/start", async (req,res)=>{
   const username = req.body.username;
   if(!username) return res.json({ error: "❌ أدخل اسم الحساب" });
 
-  if(connection) connection.disconnect();
+  if(connection) {
+    try { connection.disconnect(); } catch(e){}
+    connection = null;
+  }
 
   viewers = 0;
   messages = [];
@@ -115,6 +145,14 @@ app.post("/start", async (req,res)=>{
         text: "💬 " + data.nickname + ": " + data.comment
       });
       if(messages.length>50) messages.shift();
+    });
+
+    // إعادة الاتصال التلقائي عند الانقطاع
+    connection.on("disconnected", () => {
+      console.log("تم قطع الاتصال، محاولة إعادة الاتصال بعد 5 ثواني...");
+      setTimeout(async ()=>{
+        try{ await connection.connect(); }catch(e){ console.log("فشل إعادة الاتصال"); }
+      }, 5000);
     });
 
     res.json({ status:"connected" });
@@ -142,4 +180,4 @@ app.post("/localChat",(req,res)=>{
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, ()=>console.log("Server running"));
+app.listen(PORT, ()=>console.log("Server running on port "+PORT));
