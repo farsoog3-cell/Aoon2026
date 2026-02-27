@@ -6,7 +6,10 @@ app.use(express.json());
 
 let connection = null;
 let viewers = 0;
+let likes = 0;
+let gifts = 0;
 let messages = [];
+let roomInfo = {};
 
 // صفحة الويب
 app.get("/", (req, res) => {
@@ -30,6 +33,7 @@ app.get("/", (req, res) => {
   <button onclick="start()">ابدأ البث</button>
 
   <div id="status">⏳ لم يتم الاتصال بعد</div>
+  <div id="info"></div>
   <div id="chat"></div>
 
   <h3>محاكاة إرسال رسالة:</h3>
@@ -56,6 +60,7 @@ app.get("/", (req, res) => {
         .then(res=>res.json())
         .then(data=>{
           document.getElementById("status").innerText = "👀 المشاهدين الآن: "+data.viewers;
+          document.getElementById("info").innerHTML = "❤️ لايكات: "+data.likes+" | 🎁 هدايا: "+data.gifts+"<br>ℹ️ العنوان: "+(data.roomInfo.title || "غير معروف")+" | المكان: "+(data.roomInfo.location || "غير معروف")+" | الوقت: "+(data.roomInfo.startTime || "غير معروف");
 
           const chat = document.getElementById("chat");
           chat.innerHTML = "";
@@ -97,10 +102,16 @@ app.post("/start", async (req,res)=>{
   const username = req.body.username;
   if(!username) return res.json({ error: "❌ أدخل اسم الحساب" });
 
-  if(connection) connection.disconnect();
+  if(connection) {
+    connection.disconnect();
+    connection = null;
+  }
 
   viewers = 0;
+  likes = 0;
+  gifts = 0;
   messages = [];
+  roomInfo = {};
 
   connection = new WebcastPushConnection(username);
 
@@ -117,15 +128,35 @@ app.post("/start", async (req,res)=>{
       if(messages.length>50) messages.shift();
     });
 
+    connection.on("like", data => { likes += data.likeCount; });
+
+    connection.on("gift", data => {
+      gifts += data.repeatCount || 1;
+      messages.push({
+        avatar: data.profilePictureUrl || "https://via.placeholder.com/30",
+        text: `🎁 ${data.nickname} أرسل ${data.giftName} x${data.repeatCount || 1}`
+      });
+      if(messages.length>50) messages.shift();
+    });
+
+    connection.on("roomInfo", data => {
+      roomInfo = {
+        title: data.room.title,
+        location: data.room.location || "غير معروف",
+        startTime: new Date(data.room.startTime).toLocaleString()
+      };
+    });
+
     res.json({ status:"connected" });
   }catch(err){
+    console.log(err);
     res.json({ error:"❌ الحساب غير مباشر أو فشل الاتصال" });
   }
 });
 
 // إعادة بيانات البث
 app.get("/data",(req,res)=>{
-  res.json({ viewers, messages });
+  res.json({ viewers, likes, gifts, messages, roomInfo });
 });
 
 // إضافة رسالة محلية (محاكاة)
