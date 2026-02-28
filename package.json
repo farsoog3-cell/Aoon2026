@@ -1,0 +1,13 @@
+{
+  "name": "zom-video-server",
+  "version": "1.0.0",
+  "main": "server.js",
+  "engines": {
+    "node": "22.x"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "express-fileupload": "^1.4.0",
+    "fluent-ffmpeg": "^2.1.2"
+  }
+}
