@@ -18,30 +18,31 @@ const PORT = process.env.PORT || 3000;
 // Middleware
 app.use(fileUpload());
 
-// واجهة احترافية مع اختيار الجودة
+// واجهة احترافية
 app.get("/", (req, res) => {
   const html = `
   <!DOCTYPE html>
   <html lang="ar">
   <head>
     <meta charset="UTF-8">
-    <title>Zom فيديو - تحسين الدقة</title>
+    <title>Zom فيديو - تحسين الدقة والوضوح</title>
     <style>
       body {
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         background: linear-gradient(135deg,#4facfe,#00f2fe);
         margin:0; padding:0; color:#fff;
-        display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh;
+        display:flex; flex-direction:column; align-items:center; justify-content:flex-start; min-height:100vh;
       }
-      h1 { font-size:3em; margin-bottom:10px; text-shadow: 2px 2px 5px #000; }
-      form { background: rgba(0,0,0,0.3); padding:30px; border-radius:20px; display:flex; flex-direction:column; align-items:center; }
-      input[type=file], select { padding:10px; border-radius:10px; border:none; margin-bottom:20px; }
+      h1 { font-size:3em; margin:20px 0; text-shadow: 2px 2px 5px #000; }
+      form { background: rgba(0,0,0,0.3); padding:30px; border-radius:20px; display:flex; flex-direction:column; align-items:center; margin-top:20px; }
+      input[type=file], select { padding:10px; border-radius:10px; border:none; margin-bottom:20px; font-size:16px; }
       button { padding:15px 30px; font-size:18px; border:none; border-radius:15px; background:#00f2fe; color:#000; font-weight:bold; cursor:pointer; transition:0.3s; }
       button:hover { background:#4facfe; color:#fff; transform:scale(1.05); }
       #progressContainer { width:80%; background: rgba(0,0,0,0.2); height:30px; border-radius:15px; margin-top:20px; overflow:hidden; }
       #progressBar { width:0%; height:100%; background: linear-gradient(to right, #00f2fe, #4facfe); transition:0.2s; }
       #status { margin-top:15px; font-weight:bold; font-size:1.2em; text-shadow: 1px 1px 2px #000; }
       video { margin-top:20px; max-width:80%; border-radius:20px; box-shadow:0 0 20px rgba(0,0,0,0.5);}
+      #controls { margin-top:15px; display:flex; gap:20px; }
     </style>
   </head>
   <body>
@@ -58,6 +59,9 @@ app.get("/", (req, res) => {
     <div id="progressContainer"><div id="progressBar"></div></div>
     <div id="status"></div>
     <video id="preview" controls style="display:none;"></video>
+    <div id="controls" style="display:none;">
+      <button id="downloadBtn">تحميل الفيديو</button>
+    </div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -66,12 +70,16 @@ app.get("/", (req, res) => {
       const bar = document.getElementById('progressBar');
       const status = document.getElementById('status');
       const preview = document.getElementById('preview');
+      const downloadBtn = document.getElementById('downloadBtn');
+      const controls = document.getElementById('controls');
+      let currentBlob = null;
 
       form.addEventListener('submit', e => {
         e.preventDefault();
         const file = form.video.files[0];
         const quality = document.getElementById('quality').value;
         if(!file) return alert('اختر فيديو');
+
         const data = new FormData();
         data.append('video', file);
         data.append('quality', quality);
@@ -79,20 +87,28 @@ app.get("/", (req, res) => {
         fetch('/upload', { method:'POST', body:data })
         .then(res => res.blob())
         .then(blob => {
+          currentBlob = blob;
           const url = URL.createObjectURL(blob);
           preview.src = url;
           preview.style.display = 'block';
+          controls.style.display = 'flex';
           status.innerText = 'تمت المعالجة! يمكنك تشغيل الفيديو أو تحميله.';
+        });
+      });
+
+      downloadBtn.addEventListener('click', () => {
+        if(currentBlob){
+          const url = URL.createObjectURL(currentBlob);
           const a = document.createElement('a');
           a.href = url;
-          a.download = file.name.replace(/\.\w+$/, '_enhanced.mp4');
+          a.download = 'video_enhanced.mp4';
           a.click();
-        });
+        }
       });
 
       socket.on('progress', percent => {
         bar.style.width = percent + '%';
-        status.innerText = 'جارٍ معالجة الفيديو: ' + percent.toFixed(1) + '%';
+        status.innerText = 'جارٍ تحسين الفيديو: ' + percent.toFixed(1) + '%';
       });
 
       socket.on('done', () => {
@@ -105,7 +121,7 @@ app.get("/", (req, res) => {
   res.send(html);
 });
 
-// رفع الفيديو ومعالجته مع اختيار الجودة
+// رفع الفيديو ومعالجته
 app.post("/upload", async (req, res) => {
   if (!req.files || !req.files.video) return res.status(400).send("يرجى رفع فيديو");
 
@@ -123,14 +139,14 @@ app.post("/upload", async (req, res) => {
 
   await video.mv(uploadPath);
 
-  // تحديد الدقة النهائية حسب اختيار المستخدم
+  // تحسين الجودة والدقة
   let scaleFilter = `scale=-2:${quality}`;
 
   ffmpeg(uploadPath)
     .outputOptions([
-      `-vf ${scaleFilter},eq=contrast=1.3:brightness=0.05:saturation=1.4`,
+      `-vf ${scaleFilter},eq=contrast=1.4:brightness=0.05:saturation=1.5`,
       "-c:v libx264",
-      "-crf 20"
+      "-crf 18"
     ])
     .on('progress', progress => {
       if(progress.percent) io.emit('progress', progress.percent);
@@ -144,7 +160,7 @@ app.post("/upload", async (req, res) => {
     })
     .on('error', err => {
       console.error(err);
-      res.status(500).send("خطأ في معالجة الفيديو");
+      res.status(500).send("خطأ في تحسين الفيديو");
     })
     .save(outputPath);
 });
