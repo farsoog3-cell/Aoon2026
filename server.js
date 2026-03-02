@@ -1,168 +1,113 @@
-// server.js
 const express = require("express");
-const fileUpload = require("express-fileupload");
-const ffmpeg = require("fluent-ffmpeg");
-const fs = require("fs");
-const path = require("path");
-const http = require("http");
-const { Server } = require("socket.io");
-const ffmpegInstaller = require('@ffmpeg-installer/ffmpeg');
-
-ffmpeg.setFfmpegPath(ffmpegInstaller.path);
+const { v4: uuidv4 } = require("uuid");
 
 const app = express();
-const server = http.createServer(app);
-const io = new Server(server);
 const PORT = process.env.PORT || 3000;
 
-// Middleware
-app.use(fileUpload());
+app.use(express.json());
 
-// واجهة احترافية
+// قاعدة بيانات مؤقتة
+let users = {
+  "1001": { balance: 1000 },
+  "1002": { balance: 500 },
+  "1003": { balance: 250 }
+};
+
+let transactions = [];
+
+// الصفحة الرئيسية
 app.get("/", (req, res) => {
-  const html = `
-  <!DOCTYPE html>
-  <html lang="ar">
-  <head>
-    <meta charset="UTF-8">
-    <title>Zom فيديو - تحسين الدقة والوضوح</title>
-    <style>
-      body {
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        background: linear-gradient(135deg,#4facfe,#00f2fe);
-        margin:0; padding:0; color:#fff;
-        display:flex; flex-direction:column; align-items:center; justify-content:flex-start; min-height:100vh;
-      }
-      h1 { font-size:3em; margin:20px 0; text-shadow: 2px 2px 5px #000; }
-      form { background: rgba(0,0,0,0.3); padding:30px; border-radius:20px; display:flex; flex-direction:column; align-items:center; margin-top:20px; }
-      input[type=file], select { padding:10px; border-radius:10px; border:none; margin-bottom:20px; font-size:16px; }
-      button { padding:15px 30px; font-size:18px; border:none; border-radius:15px; background:#00f2fe; color:#000; font-weight:bold; cursor:pointer; transition:0.3s; }
-      button:hover { background:#4facfe; color:#fff; transform:scale(1.05); }
-      #progressContainer { width:80%; background: rgba(0,0,0,0.2); height:30px; border-radius:15px; margin-top:20px; overflow:hidden; }
-      #progressBar { width:0%; height:100%; background: linear-gradient(to right, #00f2fe, #4facfe); transition:0.2s; }
-      #status { margin-top:15px; font-weight:bold; font-size:1.2em; text-shadow: 1px 1px 2px #000; }
-      video { margin-top:20px; max-width:80%; border-radius:20px; box-shadow:0 0 20px rgba(0,0,0,0.5);}
-      #controls { margin-top:15px; display:flex; gap:20px; }
-    </style>
-  </head>
-  <body>
-    <h1>🦅 Zom فيديو</h1>
-    <form id="uploadForm" enctype="multipart/form-data">
-      <input type="file" name="video" accept="video/*" required>
-      <select name="quality" id="quality">
-        <option value="720">720p</option>
-        <option value="1080" selected>1080p</option>
-        <option value="2160">4K</option>
-      </select>
-      <button type="submit">رفع وتحسين الفيديو</button>
-    </form>
-    <div id="progressContainer"><div id="progressBar"></div></div>
-    <div id="status"></div>
-    <video id="preview" controls style="display:none;"></video>
-    <div id="controls" style="display:none;">
-      <button id="downloadBtn">تحميل الفيديو</button>
-    </div>
-
-    <script src="/socket.io/socket.io.js"></script>
-    <script>
-      const socket = io();
-      const form = document.getElementById('uploadForm');
-      const bar = document.getElementById('progressBar');
-      const status = document.getElementById('status');
-      const preview = document.getElementById('preview');
-      const downloadBtn = document.getElementById('downloadBtn');
-      const controls = document.getElementById('controls');
-      let currentBlob = null;
-
-      form.addEventListener('submit', e => {
-        e.preventDefault();
-        const file = form.video.files[0];
-        const quality = document.getElementById('quality').value;
-        if(!file) return alert('اختر فيديو');
-
-        const data = new FormData();
-        data.append('video', file);
-        data.append('quality', quality);
-
-        fetch('/upload', { method:'POST', body:data })
-        .then(res => res.blob())
-        .then(blob => {
-          currentBlob = blob;
-          const url = URL.createObjectURL(blob);
-          preview.src = url;
-          preview.style.display = 'block';
-          controls.style.display = 'flex';
-          status.innerText = 'تمت المعالجة! يمكنك تشغيل الفيديو أو تحميله.';
-        });
-      });
-
-      downloadBtn.addEventListener('click', () => {
-        if(currentBlob){
-          const url = URL.createObjectURL(currentBlob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = 'video_enhanced.mp4';
-          a.click();
-        }
-      });
-
-      socket.on('progress', percent => {
-        bar.style.width = percent + '%';
-        status.innerText = 'جارٍ تحسين الفيديو: ' + percent.toFixed(1) + '%';
-      });
-
-      socket.on('done', () => {
-        bar.style.width = '100%';
-      });
-    </script>
-  </body>
-  </html>
-  `;
-  res.send(html);
+  res.json({
+    message: "Party Star Jewels Server Running",
+    endpoints: {
+      checkBalance: "GET /balance/:id",
+      transfer: "POST /transfer",
+      transactions: "GET /transactions"
+    }
+  });
 });
 
-// رفع الفيديو ومعالجته
-app.post("/upload", async (req, res) => {
-  if (!req.files || !req.files.video) return res.status(400).send("يرجى رفع فيديو");
+// عرض الرصيد
+app.get("/balance/:id", (req, res) => {
+  const id = req.params.id;
 
-  const video = req.files.video;
-  const quality = req.body.quality || "1080";
+  if (!users[id]) {
+    return res.status(404).json({ error: "ID not found" });
+  }
 
-  const uploadDir = path.join(__dirname, "uploads");
-  const outputDir = path.join(__dirname, "outputs");
-
-  if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir);
-  if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir);
-
-  const uploadPath = path.join(uploadDir, video.name);
-  const outputPath = path.join(outputDir, "enhanced_" + video.name);
-
-  await video.mv(uploadPath);
-
-  // تحسين الجودة والدقة
-  let scaleFilter = `scale=-2:${quality}`;
-
-  ffmpeg(uploadPath)
-    .outputOptions([
-      `-vf ${scaleFilter},eq=contrast=1.4:brightness=0.05:saturation=1.5`,
-      "-c:v libx264",
-      "-crf 18"
-    ])
-    .on('progress', progress => {
-      if(progress.percent) io.emit('progress', progress.percent);
-    })
-    .on('end', () => {
-      io.emit('done');
-      res.download(outputPath, () => {
-        fs.unlinkSync(uploadPath);
-        fs.unlinkSync(outputPath);
-      });
-    })
-    .on('error', err => {
-      console.error(err);
-      res.status(500).send("خطأ في تحسين الفيديو");
-    })
-    .save(outputPath);
+  res.json({
+    id: id,
+    balance: users[id].balance
+  });
 });
 
-server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+// تحويل المجوهرات
+app.post("/transfer", (req, res) => {
+  const { fromID, toID, amount } = req.body;
+
+  if (!fromID || !toID || !amount) {
+    return res.status(400).json({ error: "Missing data" });
+  }
+
+  if (!users[fromID] || !users[toID]) {
+    return res.status(404).json({ error: "Invalid ID" });
+  }
+
+  if (amount <= 0) {
+    return res.status(400).json({ error: "Invalid amount" });
+  }
+
+  if (users[fromID].balance < amount) {
+    return res.status(400).json({ error: "Not enough jewels" });
+  }
+
+  // تنفيذ التحويل
+  users[fromID].balance -= amount;
+  users[toID].balance += amount;
+
+  const transaction = {
+    id: uuidv4(),
+    from: fromID,
+    to: toID,
+    amount: amount,
+    date: new Date()
+  };
+
+  transactions.push(transaction);
+
+  res.json({
+    message: "Transfer successful",
+    transaction: transaction
+  });
+});
+
+// عرض جميع العمليات
+app.get("/transactions", (req, res) => {
+  res.json(transactions);
+});
+
+// إنشاء مستخدم جديد
+app.post("/create", (req, res) => {
+  const { id, balance } = req.body;
+
+  if (!id) {
+    return res.status(400).json({ error: "ID required" });
+  }
+
+  if (users[id]) {
+    return res.status(400).json({ error: "ID already exists" });
+  }
+
+  users[id] = {
+    balance: balance || 0
+  };
+
+  res.json({
+    message: "User created",
+    user: users[id]
+  });
+});
+
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
