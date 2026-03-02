@@ -1,6 +1,7 @@
 {
   "name": "jewels-server",
   "version": "1.0.0",
+  "description": "Game gems server",
   "type": "module",
   "main": "server.js",
   "scripts": {
@@ -9,6 +10,6 @@
   "dependencies": {
     "express": "^4.18.2",
     "mongoose": "^8.0.0",
-    "dotenv": "^16.0.0"
+    "dotenv": "^16.4.0"
   }
 }
