@@ -1,113 +1,78 @@
-const express = require("express");
-const { v4: uuidv4 } = require("uuid");
+import express from "express";
+import mongoose from "mongoose";
+import { v4 as uuidv4 } from "uuid";
 
 const app = express();
-const PORT = process.env.PORT || 3000;
-
 app.use(express.json());
 
-// قاعدة بيانات مؤقتة
-let users = {
-  "1001": { balance: 1000 },
-  "1002": { balance: 500 },
-  "1003": { balance: 250 }
-};
+/* ========= DATABASE ========= */
 
-let transactions = [];
+mongoose.connect("mongodb://127.0.0.1:27017/jewelsDB");
 
-// الصفحة الرئيسية
-app.get("/", (req, res) => {
-  res.json({
-    message: "Party Star Jewels Server Running",
-    endpoints: {
-      checkBalance: "GET /balance/:id",
-      transfer: "POST /transfer",
-      transactions: "GET /transactions"
-    }
-  });
+const UserSchema = new mongoose.Schema({
+  userId: String,
+  balance: { type: Number, default: 0 }
 });
 
-// عرض الرصيد
-app.get("/balance/:id", (req, res) => {
-  const id = req.params.id;
-
-  if (!users[id]) {
-    return res.status(404).json({ error: "ID not found" });
-  }
-
-  res.json({
-    id: id,
-    balance: users[id].balance
-  });
+const TransactionSchema = new mongoose.Schema({
+  from: String,
+  to: String,
+  amount: Number,
+  date: { type: Date, default: Date.now }
 });
 
-// تحويل المجوهرات
-app.post("/transfer", (req, res) => {
+const User = mongoose.model("User", UserSchema);
+const Transaction = mongoose.model("Transaction", TransactionSchema);
+
+/* ========= CREATE USER ========= */
+
+app.post("/create", async (req, res) => {
+  const { userId } = req.body;
+
+  const user = await User.create({ userId });
+  res.json(user);
+});
+
+/* ========= TRANSFER JEWELS ========= */
+
+app.post("/transfer", async (req, res) => {
   const { fromID, toID, amount } = req.body;
 
-  if (!fromID || !toID || !amount) {
-    return res.status(400).json({ error: "Missing data" });
-  }
+  const sender = await User.findOne({ userId: fromID });
+  const receiver = await User.findOne({ userId: toID });
 
-  if (!users[fromID] || !users[toID]) {
-    return res.status(404).json({ error: "Invalid ID" });
-  }
+  if (!sender || !receiver)
+    return res.status(404).json({ error: "User not found" });
 
-  if (amount <= 0) {
-    return res.status(400).json({ error: "Invalid amount" });
-  }
+  if (sender.balance < amount)
+    return res.status(400).json({ error: "Not enough balance" });
 
-  if (users[fromID].balance < amount) {
-    return res.status(400).json({ error: "Not enough jewels" });
-  }
+  sender.balance -= amount;
+  receiver.balance += amount;
 
-  // تنفيذ التحويل
-  users[fromID].balance -= amount;
-  users[toID].balance += amount;
+  await sender.save();
+  await receiver.save();
 
-  const transaction = {
-    id: uuidv4(),
+  await Transaction.create({
     from: fromID,
     to: toID,
-    amount: amount,
-    date: new Date()
-  };
-
-  transactions.push(transaction);
-
-  res.json({
-    message: "Transfer successful",
-    transaction: transaction
+    amount
   });
+
+  res.json({ message: "Transfer successful" });
 });
 
-// عرض جميع العمليات
-app.get("/transactions", (req, res) => {
-  res.json(transactions);
+/* ========= GET BALANCE ========= */
+
+app.get("/balance/:id", async (req, res) => {
+  const user = await User.findOne({ userId: req.params.id });
+
+  if (!user)
+    return res.status(404).json({ error: "User not found" });
+
+  res.json({ balance: user.balance });
 });
 
-// إنشاء مستخدم جديد
-app.post("/create", (req, res) => {
-  const { id, balance } = req.body;
-
-  if (!id) {
-    return res.status(400).json({ error: "ID required" });
-  }
-
-  if (users[id]) {
-    return res.status(400).json({ error: "ID already exists" });
-  }
-
-  users[id] = {
-    balance: balance || 0
-  };
-
-  res.json({
-    message: "User created",
-    user: users[id]
-  });
-});
-
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+app.listen(3000, () => {
+  console.log("Server running 🚀");
 });
