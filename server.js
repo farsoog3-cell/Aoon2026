@@ -7,12 +7,12 @@ dotenv.config();
 const app = express();
 app.use(express.json());
 
-/* ========= DATABASE ========= */
+/* ================= DATABASE ================= */
 
 mongoose.connect(process.env.MONGO_URL)
   .then(() => console.log("MongoDB Connected ✅"))
   .catch(err => {
-    console.error("DB Connection Error ❌", err);
+    console.error("DB Error", err);
     process.exit(1);
   });
 
@@ -21,102 +21,142 @@ const UserSchema = new mongoose.Schema({
   balance: { type: Number, default: 0 }
 });
 
-const TransactionSchema = new mongoose.Schema({
-  from: String,
-  to: String,
-  amount: Number,
-  date: { type: Date, default: Date.now }
-});
-
 const User = mongoose.model("User", UserSchema);
-const Transaction = mongoose.model("Transaction", TransactionSchema);
 
-/* ========= CREATE USER ========= */
+/* ================= SIMPLE ADMIN PASSWORD ================= */
 
-app.post("/create", async (req, res) => {
-  try {
+const ADMIN_PASSWORD = "123456"; // ❗ غيرها بكلمة سر قوية
 
-    const { userId } = req.body;
-
-    if (!userId)
-      return res.status(400).json({ error: "UserId required" });
-
-    const exists = await User.findOne({ userId });
-
-    if (exists)
-      return res.status(400).json({ error: "User already exists" });
-
-    const user = await User.create({ userId });
-
-    res.json(user);
-
-  } catch (err) {
-    res.status(500).json({ error: "Server error" });
+function auth(req, res, next) {
+  const pass = req.headers["admin-pass"];
+  if (pass !== ADMIN_PASSWORD) {
+    return res.status(401).json({ error: "Unauthorized" });
   }
-});
+  next();
+}
 
-/* ========= TRANSFER ========= */
+/* ================= ADMIN ADD GEMS API ================= */
 
-app.post("/transfer", async (req, res) => {
+app.post("/admin/add-gems", auth, async (req, res) => {
   try {
 
-    const { fromID, toID, amount } = req.body;
+    const { userId, amount } = req.body;
 
-    if (!fromID || !toID || !amount)
+    if (!userId || !amount)
       return res.status(400).json({ error: "Missing data" });
 
     if (amount <= 0)
       return res.status(400).json({ error: "Invalid amount" });
 
-    const sender = await User.findOne({ userId: fromID });
-    const receiver = await User.findOne({ userId: toID });
-
-    if (!sender || !receiver)
-      return res.status(404).json({ error: "User not found" });
-
-    if (sender.balance < amount)
-      return res.status(400).json({ error: "Not enough balance" });
-
-    sender.balance -= amount;
-    receiver.balance += amount;
-
-    await sender.save();
-    await receiver.save();
-
-    await Transaction.create({
-      from: fromID,
-      to: toID,
-      amount
-    });
-
-    res.json({ message: "Transfer successful ✅" });
-
-  } catch (err) {
-    res.status(500).json({ error: "Transfer failed" });
-  }
-});
-
-/* ========= BALANCE ========= */
-
-app.get("/balance/:id", async (req, res) => {
-  try {
-
-    const user = await User.findOne({ userId: req.params.id });
+    const user = await User.findOne({ userId });
 
     if (!user)
       return res.status(404).json({ error: "User not found" });
 
-    res.json({ balance: user.balance });
+    user.balance += Number(amount);
+    await user.save();
+
+    res.json({
+      message: "Gems Added ✅",
+      newBalance: user.balance
+    });
 
   } catch (err) {
-    res.status(500).json({ error: "Server error" });
+    res.status(500).json({ error: "Server Error" });
   }
 });
 
-/* ========= START SERVER ========= */
+/* ================= ADMIN PANEL PAGE ================= */
+
+app.get("/admin", (req, res) => {
+
+  res.send(`
+  <!DOCTYPE html>
+  <html>
+  <head>
+  <title>Admin Panel</title>
+  <style>
+  body{
+    background:#111;
+    color:white;
+    font-family:Arial;
+    text-align:center;
+    padding:50px;
+  }
+  input{
+    padding:10px;
+    margin:10px;
+    width:250px;
+  }
+  button{
+    padding:10px 20px;
+    background:green;
+    color:white;
+    border:none;
+    cursor:pointer;
+  }
+  </style>
+  </head>
+  <body>
+
+  <h2>Admin Login 🔐</h2>
+
+  <input id="password" type="password" placeholder="Enter Admin Password"><br><br>
+
+  <button onclick="login()">Login</button>
+
+  <div id="panel" style="display:none;margin-top:30px;">
+    <h2>Add Gems 🚀</h2>
+
+    <input id="userId" placeholder="User ID"><br>
+    <input id="amount" type="number" placeholder="Gems Amount"><br>
+
+    <button onclick="send()">Send Gems</button>
+
+    <p id="result"></p>
+  </div>
+
+  <script>
+
+  let adminPass = "";
+
+  function login(){
+    adminPass = document.getElementById("password").value;
+    document.getElementById("panel").style.display = "block";
+  }
+
+  async function send(){
+
+    const userId = document.getElementById("userId").value;
+    const amount = document.getElementById("amount").value;
+
+    const res = await fetch("/admin/add-gems", {
+      method:"POST",
+      headers:{
+        "Content-Type":"application/json",
+        "admin-pass": adminPass
+      },
+      body:JSON.stringify({ userId, amount })
+    });
+
+    const data = await res.json();
+
+    document.getElementById("result").innerText =
+      JSON.stringify(data);
+  }
+
+  </script>
+
+  </body>
+  </html>
+  `);
+
+});
+
+/* ================= START SERVER ================= */
 
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-  console.log("Server running 🚀 on port", PORT);
+  console.log("Server Running 🚀 on port", PORT);
 });
