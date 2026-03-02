@@ -1,16 +1,17 @@
 import express from "express";
 import mongoose from "mongoose";
-import { v4 as uuidv4 } from "uuid";
 
 const app = express();
 app.use(express.json());
 
 /* ========= DATABASE ========= */
 
-mongoose.connect("mongodb://127.0.0.1:27017/jewelsDB");
+mongoose.connect("mongodb://127.0.0.1:27017/jewelsDB")
+  .then(() => console.log("MongoDB Connected ✅"))
+  .catch(err => console.error("DB Error ❌", err));
 
 const UserSchema = new mongoose.Schema({
-  userId: String,
+  userId: { type: String, unique: true },
   balance: { type: Number, default: 0 }
 });
 
@@ -27,52 +28,88 @@ const Transaction = mongoose.model("Transaction", TransactionSchema);
 /* ========= CREATE USER ========= */
 
 app.post("/create", async (req, res) => {
-  const { userId } = req.body;
+  try {
+    const { userId } = req.body;
 
-  const user = await User.create({ userId });
-  res.json(user);
+    if (!userId)
+      return res.status(400).json({ error: "UserId required" });
+
+    const exists = await User.findOne({ userId });
+
+    if (exists)
+      return res.status(400).json({ error: "User already exists" });
+
+    const user = await User.create({ userId });
+
+    res.json(user);
+
+  } catch (err) {
+    res.status(500).json({ error: "Server error" });
+  }
 });
 
 /* ========= TRANSFER JEWELS ========= */
 
 app.post("/transfer", async (req, res) => {
-  const { fromID, toID, amount } = req.body;
+  try {
 
-  const sender = await User.findOne({ userId: fromID });
-  const receiver = await User.findOne({ userId: toID });
+    const { fromID, toID, amount } = req.body;
 
-  if (!sender || !receiver)
-    return res.status(404).json({ error: "User not found" });
+    if (!fromID || !toID || !amount)
+      return res.status(400).json({ error: "Missing data" });
 
-  if (sender.balance < amount)
-    return res.status(400).json({ error: "Not enough balance" });
+    if (amount <= 0)
+      return res.status(400).json({ error: "Invalid amount" });
 
-  sender.balance -= amount;
-  receiver.balance += amount;
+    const sender = await User.findOne({ userId: fromID });
+    const receiver = await User.findOne({ userId: toID });
 
-  await sender.save();
-  await receiver.save();
+    if (!sender || !receiver)
+      return res.status(404).json({ error: "User not found" });
 
-  await Transaction.create({
-    from: fromID,
-    to: toID,
-    amount
-  });
+    if (sender.balance < amount)
+      return res.status(400).json({ error: "Not enough balance" });
 
-  res.json({ message: "Transfer successful" });
+    /* ====== UPDATE BALANCE SAFELY ====== */
+
+    sender.balance -= amount;
+    receiver.balance += amount;
+
+    await sender.save();
+    await receiver.save();
+
+    await Transaction.create({
+      from: fromID,
+      to: toID,
+      amount
+    });
+
+    res.json({ message: "Transfer successful ✅" });
+
+  } catch (err) {
+    res.status(500).json({ error: "Transfer failed" });
+  }
 });
 
 /* ========= GET BALANCE ========= */
 
 app.get("/balance/:id", async (req, res) => {
-  const user = await User.findOne({ userId: req.params.id });
+  try {
 
-  if (!user)
-    return res.status(404).json({ error: "User not found" });
+    const user = await User.findOne({ userId: req.params.id });
 
-  res.json({ balance: user.balance });
+    if (!user)
+      return res.status(404).json({ error: "User not found" });
+
+    res.json({ balance: user.balance });
+
+  } catch (err) {
+    res.status(500).json({ error: "Server error" });
+  }
 });
 
+/* ========= START SERVER ========= */
+
 app.listen(3000, () => {
-  console.log("Server running 🚀");
+  console.log("Server running 🚀 on port 3000");
 });
