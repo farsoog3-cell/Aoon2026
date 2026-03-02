@@ -1,14 +1,20 @@
 import express from "express";
 import mongoose from "mongoose";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 const app = express();
 app.use(express.json());
 
 /* ========= DATABASE ========= */
 
-mongoose.connect("mongodb://127.0.0.1:27017/jewelsDB")
+mongoose.connect(process.env.MONGO_URL)
   .then(() => console.log("MongoDB Connected ✅"))
-  .catch(err => console.error("DB Error ❌", err));
+  .catch(err => {
+    console.error("DB Connection Error ❌", err);
+    process.exit(1);
+  });
 
 const UserSchema = new mongoose.Schema({
   userId: { type: String, unique: true },
@@ -29,6 +35,7 @@ const Transaction = mongoose.model("Transaction", TransactionSchema);
 
 app.post("/create", async (req, res) => {
   try {
+
     const { userId } = req.body;
 
     if (!userId)
@@ -48,7 +55,7 @@ app.post("/create", async (req, res) => {
   }
 });
 
-/* ========= TRANSFER JEWELS ========= */
+/* ========= TRANSFER ========= */
 
 app.post("/transfer", async (req, res) => {
   try {
@@ -70,8 +77,6 @@ app.post("/transfer", async (req, res) => {
     if (sender.balance < amount)
       return res.status(400).json({ error: "Not enough balance" });
 
-    /* ====== UPDATE BALANCE SAFELY ====== */
-
     sender.balance -= amount;
     receiver.balance += amount;
 
@@ -91,7 +96,7 @@ app.post("/transfer", async (req, res) => {
   }
 });
 
-/* ========= GET BALANCE ========= */
+/* ========= BALANCE ========= */
 
 app.get("/balance/:id", async (req, res) => {
   try {
@@ -110,6 +115,8 @@ app.get("/balance/:id", async (req, res) => {
 
 /* ========= START SERVER ========= */
 
-app.listen(3000, () => {
-  console.log("Server running 🚀 on port 3000");
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, () => {
+  console.log("Server running 🚀 on port", PORT);
 });
