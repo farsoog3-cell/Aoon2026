@@ -1,52 +1,130 @@
-// server.js
 const express = require("express");
-const cors = require("cors");
-
 const app = express();
-app.use(cors());
+
 app.use(express.json());
 
 /*
-  قاعدة بيانات مؤقتة (يمكن ربطها بـ MongoDB لاحقاً)
+  الصفحة الرئيسية
+  عند فتح رابط السيرفر يظهر الفورم مباشرة
 */
-let transactions = [];
+app.get("/", (req, res) => {
 
-/*
-  API لإرسال طلب مجوهرات
-  هذا لا يرسل شيء للعبة مباشرة
-  بل يسجل الطلب فقط
-*/
-app.post("/send-gems", (req, res) => {
-    const { userId, gems } = req.body;
+    res.send(`
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Control Panel</title>
 
-    if (!userId || !gems) {
-        return res.status(400).json({ message: "UserID and Gems required" });
+    <style>
+    body{
+        margin:0;
+        font-family:Arial;
+        background:linear-gradient(135deg,#0f172a,#1e293b);
+        color:white;
+        display:flex;
+        justify-content:center;
+        align-items:center;
+        height:100vh;
     }
 
-    const request = {
-        id: transactions.length + 1,
-        userId,
-        gems,
-        status: "pending",
-        time: new Date()
-    };
+    .box{
+        background:#111827;
+        padding:40px;
+        border-radius:20px;
+        width:350px;
+        box-shadow:0 0 30px rgba(0,0,0,0.6);
+    }
 
-    transactions.push(request);
+    input{
+        width:100%;
+        padding:12px;
+        margin:10px 0;
+        border:none;
+        border-radius:10px;
+    }
 
-    res.json({
-        message: "Request received successfully",
-        data: request
-    });
+    button{
+        width:100%;
+        padding:12px;
+        border:none;
+        border-radius:10px;
+        background:#6366f1;
+        color:white;
+        font-weight:bold;
+        cursor:pointer;
+    }
+
+    button:hover{
+        background:#4f46e5;
+    }
+
+    #result{
+        margin-top:15px;
+        text-align:center;
+    }
+
+    </style>
+    </head>
+    <body>
+
+    <div class="box">
+        <h2 style="text-align:center;">Web Panel</h2>
+
+        <input type="text" id="userId" placeholder="Enter ID">
+        <input type="number" id="amount" placeholder="Enter Amount">
+
+        <button onclick="send()">Send</button>
+
+        <div id="result"></div>
+    </div>
+
+    <script>
+
+    async function send(){
+
+        const userId = document.getElementById("userId").value;
+        const amount = document.getElementById("amount").value;
+
+        const res = await fetch("/api",{
+            method:"POST",
+            headers:{
+                "Content-Type":"application/json"
+            },
+            body:JSON.stringify({userId,amount})
+        });
+
+        const data = await res.json();
+        document.getElementById("result").innerText = data.message;
+    }
+
+    </script>
+
+    </body>
+    </html>
+    `);
 });
+
 
 /*
-  عرض الطلبات (Admin)
+  API يستقبل البيانات
 */
-app.get("/transactions", (req, res) => {
-    res.json(transactions);
+app.post("/api", (req,res)=>{
+    const { userId, amount } = req.body;
+
+    if(!userId || !amount){
+        return res.json({message:"Missing Data"});
+    }
+
+    console.log("Received:", userId, amount);
+
+    res.json({message:"Data Received Successfully"});
 });
 
+
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
+
+app.listen(PORT, ()=>{
     console.log("Server running on port " + PORT);
 });
