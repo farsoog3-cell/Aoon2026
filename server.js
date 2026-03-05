@@ -1,130 +1,220 @@
-const express = require("express");
-const app = express();
+import express from "express"
+import { v4 as uuidv4 } from "uuid"
 
-app.use(express.json());
+const app = express()
+const PORT = process.env.PORT || 3000
 
-/*
-  الصفحة الرئيسية
-  عند فتح رابط السيرفر يظهر الفورم مباشرة
-*/
-app.get("/", (req, res) => {
+app.use(express.json())
 
-    res.send(`
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Control Panel</title>
+let sessions = {}
 
-    <style>
-    body{
-        margin:0;
-        font-family:Arial;
-        background:linear-gradient(135deg,#0f172a,#1e293b);
-        color:white;
-        display:flex;
-        justify-content:center;
-        align-items:center;
-        height:100vh;
-    }
+app.get("/", (req,res)=>{
 
-    .box{
-        background:#111827;
-        padding:40px;
-        border-radius:20px;
-        width:350px;
-        box-shadow:0 0 30px rgba(0,0,0,0.6);
-    }
+res.send(`
 
-    input{
-        width:100%;
-        padding:12px;
-        margin:10px 0;
-        border:none;
-        border-radius:10px;
-    }
+<html>
+<head>
+<title>Dashboard</title>
 
-    button{
-        width:100%;
-        padding:12px;
-        border:none;
-        border-radius:10px;
-        background:#6366f1;
-        color:white;
-        font-weight:bold;
-        cursor:pointer;
-    }
+<style>
 
-    button:hover{
-        background:#4f46e5;
-    }
+body{
+background:#0f172a;
+color:white;
+font-family:Arial;
+text-align:center;
+}
 
-    #result{
-        margin-top:15px;
-        text-align:center;
-    }
+button{
+padding:12px;
+background:#22c55e;
+border:none;
+border-radius:6px;
+cursor:pointer;
+}
 
-    </style>
-    </head>
-    <body>
+.box{
+background:#1e293b;
+padding:20px;
+margin:20px;
+border-radius:10px;
+}
 
-    <div class="box">
-        <h2 style="text-align:center;">Web Panel</h2>
+</style>
 
-        <input type="text" id="userId" placeholder="Enter ID">
-        <input type="number" id="amount" placeholder="Enter Amount">
+</head>
 
-        <button onclick="send()">Send</button>
+<body>
 
-        <div id="result"></div>
-    </div>
+<h1>Session Dashboard</h1>
 
-    <script>
+<button onclick="create()">Create Session</button>
 
-    async function send(){
+<div id="sessions"></div>
 
-        const userId = document.getElementById("userId").value;
-        const amount = document.getElementById("amount").value;
+<script>
 
-        const res = await fetch("/api",{
-            method:"POST",
-            headers:{
-                "Content-Type":"application/json"
-            },
-            body:JSON.stringify({userId,amount})
-        });
+function create(){
 
-        const data = await res.json();
-        document.getElementById("result").innerText = data.message;
-    }
+fetch('/create')
+.then(r=>r.json())
+.then(data=>{
 
-    </script>
+let link=data.link
 
-    </body>
-    </html>
-    `);
-});
+let div=document.createElement("div")
+div.className="box"
 
+div.innerHTML="Session Link:<br>"+link
 
-/*
-  API يستقبل البيانات
-*/
-app.post("/api", (req,res)=>{
-    const { userId, amount } = req.body;
+document.getElementById("sessions").appendChild(div)
 
-    if(!userId || !amount){
-        return res.json({message:"Missing Data"});
-    }
+})
 
-    console.log("Received:", userId, amount);
+}
 
-    res.json({message:"Data Received Successfully"});
-});
+</script>
 
+</body>
 
-const PORT = process.env.PORT || 3000;
+</html>
 
-app.listen(PORT, ()=>{
-    console.log("Server running on port " + PORT);
-});
+`)
+
+})
+
+app.get("/create",(req,res)=>{
+
+let id=uuidv4().slice(0,6)
+
+sessions[id]={}
+
+res.json({
+link: req.protocol + "://" + req.get("host") + "/s/" + id
+})
+
+})
+
+app.get("/s/:id",(req,res)=>{
+
+let id=req.params.id
+
+res.send(`
+
+<html>
+
+<body style="font-family:Arial;text-align:center">
+
+<h2>Share Device Info</h2>
+
+<button onclick="send()">Share</button>
+
+<script>
+
+function send(){
+
+let device=navigator.userAgent
+
+navigator.getBattery().then(function(b){
+
+let battery=b.level*100
+
+navigator.geolocation.getCurrentPosition(function(pos){
+
+fetch("/collect",{
+
+method:"POST",
+
+headers:{
+"Content-Type":"application/json"
+},
+
+body:JSON.stringify({
+
+id:"${id}",
+
+device:device,
+
+battery:battery,
+
+lat:pos.coords.latitude,
+
+lon:pos.coords.longitude
+
+})
+
+}).then(()=>{
+
+document.body.innerHTML="<h2>Data sent</h2>"
+
+})
+
+})
+
+})
+
+}
+
+</script>
+
+</body>
+
+</html>
+
+`)
+
+})
+
+app.post("/collect",(req,res)=>{
+
+let data=req.body
+
+sessions[data.id]=data
+
+res.json({status:"ok"})
+
+})
+
+app.get("/map/:id",(req,res)=>{
+
+let s=sessions[req.params.id]
+
+res.send(`
+
+<html>
+
+<head>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+</head>
+
+<body>
+
+<div id="map" style="height:100vh"></div>
+
+<script>
+
+var map=L.map('map').setView([${s.lat},${s.lon}],13)
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map)
+
+L.marker([${s.lat},${s.lon}]).addTo(map)
+
+</script>
+
+</body>
+
+</html>
+
+`)
+
+})
+
+app.listen(PORT,()=>{
+
+console.log("Server running")
+
+})
