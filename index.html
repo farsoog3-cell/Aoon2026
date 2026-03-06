@@ -3,83 +3,107 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>نظام إدارة الشحن - Firebase</title>
-
-<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600&display=swap" rel="stylesheet">
+<title>نظام شحن احترافي</title>
 
 <style>
-body{
-margin:0;
-font-family:'Cairo',sans-serif;
-background:#f1f5f9;
-}
-
+body{font-family:Cairo;background:#f1f5f9;margin:0}
 input,select{
 width:100%;
 padding:10px;
-margin-bottom:10px;
+margin:6px 0;
 border-radius:8px;
 border:1px solid #ccc;
 }
-
 button{
 padding:10px;
 border:none;
 border-radius:8px;
 cursor:pointer;
 }
-
-.primary{background:#2563eb;color:#fff;width:100%}
-.smallBtn{background:#ef4444;color:#fff;font-size:12px}
-
+.primary{background:#2563eb;color:white;width:100%}
 .card{
-background:#fff;
-padding:20px;
+background:white;
 margin:20px;
+padding:20px;
 border-radius:14px;
-box-shadow:0 4px 10px rgba(0,0,0,0.05);
+box-shadow:0 4px 10px rgba(0,0,0,0.05)
 }
-
 .hidden{display:none}
 </style>
+
 </head>
 <body>
 
-<!-- LOGIN -->
+<!-- ================= LOGIN ================= -->
+
 <div id="login" class="card">
 <h2>تسجيل الدخول</h2>
 
 <input id="officeName" placeholder="اسم المكتب">
-<input id="officeKey" placeholder="كلمة السر">
+<input id="officeKey" type="password" placeholder="كلمة السر">
 
 <button class="primary" onclick="officeLogin()">دخول مكتب</button>
+
+<hr>
+
+<h3>دخول الادمن</h3>
+<input id="adminPass" type="password" placeholder="كلمة سر الادمن">
+<button class="primary" onclick="adminLogin()">دخول الادمن</button>
 </div>
 
-<!-- ADMIN -->
+<!-- ================= ADMIN PANEL ================= -->
+
 <div id="adminPanel" class="hidden">
 
 <div class="card">
+<h2>لوحة التحكم - الادمن</h2>
+
 <h3>إنشاء مكتب</h3>
 <input id="newOfficeName" placeholder="اسم المكتب">
-<input id="newOfficeKey" placeholder="كلمة السر">
+<input id="newOfficePass" placeholder="كلمة السر">
 <input id="country" placeholder="البلد">
-<input id="region" placeholder="المنطقة">
+<input id="region" placeholder="المحافظة">
 
 <button class="primary" onclick="createOffice()">إنشاء مكتب</button>
 </div>
 
 <div class="card">
-<h3>إنشاء فاتورة</h3>
-<input id="client" placeholder="اسم العميل">
-<input id="items" placeholder="البضاعة">
-<select id="targetOffice"></select>
-
-<button class="primary" onclick="createInvoice()">حفظ الفاتورة</button>
+<h3>إنشاء فاتورة وإرسالها</h3>
+<input id="invoiceClient" placeholder="اسم العميل">
+<input id="invoiceItems" placeholder="البضاعة">
+<select id="selectOffice"></select>
+<button class="primary" onclick="createInvoice()">إنشاء وإرسال</button>
 </div>
 
 <div class="card">
 <h3>كل الفواتير</h3>
+<input id="searchCode" placeholder="بحث بالكود">
+<button class="primary" onclick="searchInvoice()">بحث</button>
 <div id="invoiceList"></div>
+</div>
+
+</div>
+
+<!-- ================= OFFICE PANEL ================= -->
+
+<div id="officePanel" class="hidden">
+
+<div class="card">
+<h2>لوحة المكتب</h2>
+
+<h3>فواتيري</h3>
+<input id="searchMyInvoice" placeholder="بحث بالكود">
+<button class="primary" onclick="searchMyInvoice()">بحث</button>
+
+<div id="myInvoices"></div>
+
+<hr>
+
+<h3>دردشة مع الادمن</h3>
+<input id="chatMsg" placeholder="اكتب رسالة">
+<button class="primary" onclick="sendMessage()">إرسال</button>
+<div id="chatBox"></div>
+
 </div>
 
 </div>
@@ -93,139 +117,213 @@ import { getFirestore,
 collection,
 addDoc,
 getDocs,
+query,
+where,
 deleteDoc,
 doc,
-query,
-where } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js";
+updateDoc,
+onSnapshot
+} from "https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js";
 
 const firebaseConfig = {
-apiKey: "API_KEY",
-authDomain: "man-7f10b.firebaseapp.com",
-projectId: "man-7f10b",
-storageBucket: "man-7f10b.appspot.com",
-messagingSenderId: "442792808025",
-appId: "1:442792808025:web:f85f15a8d0652bd232eb48"
+apiKey:"API_KEY",
+authDomain:"man-7f10b.firebaseapp.com",
+projectId:"man-7f10b"
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-/* ================= OFFICE ================= */
+const ADMIN_PASSWORD="2262623212262321";
+
+let currentOffice="";
+
+/* ================= LOGIN ================= */
+
+window.adminLogin = async function(){
+
+let pass=document.getElementById("adminPass").value;
+
+if(pass===ADMIN_PASSWORD){
+login.classList.add("hidden")
+adminPanel.classList.remove("hidden")
+loadOffices()
+loadInvoices()
+}else{
+alert("كلمة السر خطأ")
+}
+}
+
+window.officeLogin = async function(){
+
+let name=document.getElementById("officeName").value;
+let key=document.getElementById("officeKey").value;
+
+let q=query(collection(db,"offices"),
+where("name","==",name),
+where("key","==",key));
+
+let snap=await getDocs(q);
+
+if(!snap.empty){
+currentOffice=name;
+login.classList.add("hidden");
+officePanel.classList.remove("hidden");
+loadMyInvoices();
+listenChat();
+}else{
+alert("بيانات غير صحيحة")
+}
+}
+
+/* ================= OFFICES ================= */
 
 window.createOffice = async function(){
 
-let name = document.getElementById("newOfficeName").value
-let key = document.getElementById("newOfficeKey").value
-let country = document.getElementById("country").value
-let region = document.getElementById("region").value
-
 await addDoc(collection(db,"offices"),{
-name,key,country,region
+name:newOfficeName.value,
+key:newOfficePass.value,
+country:country.value,
+region:region.value,
+active:true
 })
 
 alert("تم إنشاء المكتب")
 loadOffices()
 }
 
-/* ================= LOAD OFFICES ================= */
-
 async function loadOffices(){
-
-let select = document.getElementById("targetOffice")
+let snap=await getDocs(collection(db,"offices"))
+let select=document.getElementById("selectOffice")
 select.innerHTML=""
-
-let snapshot = await getDocs(collection(db,"offices"))
-
-snapshot.forEach(docSnap=>{
-let data = docSnap.data()
-
-let option = document.createElement("option")
-option.value = data.name
-option.textContent = data.name
-
-select.appendChild(option)
+snap.forEach(d=>{
+let data=d.data()
+let opt=document.createElement("option")
+opt.value=data.name
+opt.textContent=data.name
+select.appendChild(opt)
 })
 }
 
-window.officeLogin = async function(){
-
-let name = document.getElementById("officeName").value
-let key = document.getElementById("officeKey").value
-
-let q = query(collection(db,"offices"),
-where("name","==",name),
-where("key","==",key))
-
-let snap = await getDocs(q)
-
-if(!snap.empty){
-document.getElementById("login").classList.add("hidden")
-document.getElementById("adminPanel").classList.remove("hidden")
-loadOffices()
-loadInvoices()
-}else{
-alert("بيانات غير صحيحة")
-}
-}
-
-/* ================= INVOICE ================= */
+/* ================= INVOICES ================= */
 
 window.createInvoice = async function(){
 
-let client = document.getElementById("client").value
-let items = document.getElementById("items").value
-let office = document.getElementById("targetOffice").value
-
-let code = "INV-"+Math.floor(Math.random()*1000000)
+let code="INV-"+Math.floor(Math.random()*999999)
 
 await addDoc(collection(db,"invoices"),{
-client,
-items,
-office,
 code,
-date:new Date().toLocaleDateString()
+client:invoiceClient.value,
+items:invoiceItems.value,
+office:selectOffice.value,
+status:"sent",
+from:"admin"
 })
 
-alert("تم حفظ الفاتورة")
+alert("تم ارسال الفاتورة")
 loadInvoices()
 }
 
-/* ================= LOAD INVOICES ================= */
-
 async function loadInvoices(){
 
-let list = document.getElementById("invoiceList")
+let snap=await getDocs(collection(db,"invoices"))
+let list=document.getElementById("invoiceList")
 list.innerHTML=""
 
-let snapshot = await getDocs(collection(db,"invoices"))
+snap.forEach(d=>{
+let data=d.data()
 
-snapshot.forEach(docSnap=>{
-let data = docSnap.data()
-
-let div = document.createElement("div")
-div.style.padding="10px"
-div.style.borderBottom="1px solid #ddd"
-
-div.innerHTML = `
+let div=document.createElement("div")
+div.innerHTML=`
 <b>${data.code}</b> | ${data.client} | ${data.office}
-<button class="smallBtn" onclick="deleteInvoice('${docSnap.id}')">
-حذف
-</button>
+ | الحالة: ${data.status}
 `
-
 list.appendChild(div)
 })
 }
 
-window.deleteInvoice = async function(id){
+window.searchInvoice = async function(){
 
-await deleteDoc(doc(db,"invoices",id))
-alert("تم الحذف")
-loadInvoices()
+let code=searchCode.value
+let q=query(collection(db,"invoices"),where("code","==",code))
+let snap=await getDocs(q)
+
+invoiceList.innerHTML=""
+
+snap.forEach(d=>{
+invoiceList.innerHTML+=`
+<b>${d.data().code}</b>
+<br>
+${JSON.stringify(d.data())}
+<hr>
+`
+})
 }
 
-/* تحميل البيانات عند فتح الصفحة */
-loadOffices()
+/* ================= OFFICE FUNCTIONS ================= */
+
+async function loadMyInvoices(){
+
+let q=query(collection(db,"invoices"),
+where("office","==",currentOffice))
+
+onSnapshot(q,(snap)=>{
+myInvoices.innerHTML=""
+snap.forEach(d=>{
+let data=d.data()
+myInvoices.innerHTML+=`
+<div>
+<b>${data.code}</b>
+${data.client}
+<br>
+الحالة: ${data.status}
+<br>
+<button onclick="approveInvoice('${d.id}')">موافقة</button>
+<button onclick="deleteInvoice('${d.id}')">حذف</button>
+</div>
+<hr>
+`
+})
+})
+}
+
+window.approveInvoice = async function(id){
+await updateDoc(doc(db,"invoices",id),{
+status:"approved"
+})
+}
+
+window.deleteInvoice = async function(id){
+await deleteDoc(doc(db,"invoices",id))
+}
+
+/* ================= CHAT ================= */
+
+window.sendMessage = async function(){
+
+await addDoc(collection(db,"chat"),{
+from:currentOffice,
+msg:chatMsg.value,
+time:new Date()
+})
+
+chatMsg.value=""
+}
+
+function listenChat(){
+
+onSnapshot(collection(db,"chat"),(snap)=>{
+chatBox.innerHTML=""
+snap.forEach(d=>{
+let data=d.data()
+chatBox.innerHTML+=`
+<b>${data.from}</b> :
+${data.msg}
+<hr>
+`
+})
+})
+}
 
 </script>
 
