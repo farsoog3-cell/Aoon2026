@@ -3,190 +3,187 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>لوحة تحكم احترافية</title>
+<title>نظام شحن متكامل</title>
 
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600&display=swap" rel="stylesheet">
 
 <style>
-*{box-sizing:border-box;margin:0;padding:0;font-family:'Cairo',sans-serif}
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Cairo',sans-serif}
 
 body{
-background:#f1f5f9;
+background:#0f172a;
+color:white;
 }
 
-/* LOGIN */
+.hidden{display:none}
+
+/* ===== LOGIN ===== */
 #login{
-max-width:350px;
-margin:120px auto;
+max-width:400px;
+margin:100px auto;
 background:white;
+color:black;
 padding:30px;
-border-radius:15px;
-box-shadow:0 10px 30px rgba(0,0,0,0.1);
+border-radius:20px;
+box-shadow:0 10px 40px rgba(0,0,0,0.3);
 }
-#login input,#login button{
+
+input,select{
 width:100%;
 padding:10px;
-margin:8px 0;
+margin:6px 0;
 border-radius:8px;
-border:1px solid #ddd;
+border:1px solid #ccc;
 }
-.primary{
+
+button{
 background:#2563eb;
 color:white;
 border:none;
+padding:10px;
+border-radius:8px;
 cursor:pointer;
+transition:0.3s;
 }
 
-/* LAYOUT */
+button:hover{
+background:#1d4ed8;
+transform:scale(1.05);
+}
+
+/* ===== DASHBOARD ===== */
+
 .container{
 display:flex;
 min-height:100vh;
 }
 
 /* SIDEBAR */
+
 .sidebar{
 width:250px;
-background:#0f172a;
-color:white;
+background:#111827;
 padding:20px;
-transition:0.3s;
-}
-
-.sidebar h3{
-margin-bottom:20px;
 }
 
 .sidebar a{
 display:block;
-padding:10px;
+padding:12px;
 margin-bottom:8px;
 border-radius:6px;
 cursor:pointer;
 }
 
 .sidebar a:hover{
-background:#1e293b;
-}
-
-/* زر فتح/إغلاق */
-.toggleBtn{
-display:none;
 background:#2563eb;
-color:white;
-padding:8px;
-border-radius:6px;
-cursor:pointer;
-margin-bottom:10px;
 }
 
 /* CONTENT */
+
 .content{
 flex:1;
-padding:25px;
-overflow:auto;
+padding:30px;
 }
 
 .card{
-background:white;
+background:#1e293b;
 padding:20px;
-border-radius:15px;
-box-shadow:0 5px 15px rgba(0,0,0,0.05);
+border-radius:16px;
 margin-bottom:20px;
+box-shadow:0 5px 20px rgba(0,0,0,0.3);
 }
 
-.hidden{
-display:none;
-}
+/* MOBILE */
 
-/* RESPONSIVE */
 @media(max-width:900px){
+.container{
+flex-direction:column;
+}
 .sidebar{
-position:absolute;
-height:100%;
-transform:translateX(100%);
-}
-
-.sidebar.open{
-transform:translateX(0);
-}
-
-.toggleBtn{
-display:inline-block;
+width:100%;
 }
 }
 </style>
+
 </head>
 <body>
 
-<!-- LOGIN -->
-<div id="login">
-<h2>تسجيل الدخول</h2>
+<!-- ================= LOGIN ================= -->
 
-<input id="adminPass" type="password" placeholder="كلمة سر الادمن">
-<button class="primary" onclick="adminLogin()">دخول الادمن</button>
+<div id="login">
+
+<h2>🚀 تسجيل الدخول</h2>
+
+<h3>دخول الادمن</h3>
+<input id="adminPass" type="password" placeholder="كلمة السر">
+<button onclick="adminLogin()">دخول</button>
+
+<hr>
+
+<h3>دخول المكتب</h3>
+<input id="officeName" placeholder="اسم المكتب">
+<input id="officeKey" type="password" placeholder="كلمة السر">
+<button onclick="officeLogin()">دخول</button>
+
 </div>
 
-<!-- لوحة التحكم -->
+<!-- ================= DASHBOARD ================= -->
+
 <div id="dashboard" class="hidden">
 
 <div class="container">
 
-<!-- SIDEBAR -->
-<div class="sidebar" id="sidebar">
+<div class="sidebar">
 
 <h3>لوحة التحكم</h3>
-
-<span class="toggleBtn" onclick="toggleSidebar()">☰ إغلاق</span>
 
 <a onclick="showSection('offices')">🏢 المكاتب</a>
 <a onclick="showSection('invoices')">📦 الفواتير</a>
 <a onclick="showSection('chat')">💬 الدردشة</a>
+<a onclick="logout()">🚪 خروج</a>
 
 </div>
 
-<!-- CONTENT -->
 <div class="content">
 
-<span class="toggleBtn" onclick="toggleSidebar()">☰ فتح القائمة</span>
-
-<!-- ========== المكاتب ========== -->
+<!-- OFFICES -->
 <div id="offices" class="card section">
 <h3>إدارة المكاتب</h3>
 
-<input id="officeName" placeholder="اسم المكتب">
-<input id="officePass" placeholder="كلمة السر">
+<input id="newOfficeName" placeholder="اسم المكتب">
+<input id="newOfficePass" placeholder="كلمة السر">
 <input id="country" placeholder="البلد">
 <input id="region" placeholder="المحافظة">
 
-<button class="primary" onclick="createOffice()">إنشاء مكتب</button>
+<button onclick="createOffice()">إنشاء مكتب</button>
 
 <hr>
 <div id="officeList"></div>
 </div>
 
-<!-- ========== الفواتير ========== -->
+<!-- INVOICES -->
 <div id="invoices" class="card section hidden">
-<h3>إدارة الفواتير</h3>
+<h3>الفواتير</h3>
 
 <input id="client" placeholder="اسم العميل">
 <input id="items" placeholder="البضاعة">
-<input id="officeTarget" placeholder="اسم المكتب المستهدف">
+<input id="toOffice" placeholder="اسم المكتب المستلم">
 
-<button class="primary" onclick="createInvoice()">إنشاء فاتورة</button>
+<button onclick="createInvoice()">إنشاء فاتورة</button>
 
 <hr>
 <div id="invoiceList"></div>
 </div>
 
-<!-- ========== الدردشة ========== -->
+<!-- CHAT -->
 <div id="chat" class="card section hidden">
 <h3>الدردشة</h3>
 
 <input id="chatMsg" placeholder="اكتب رسالة">
-<button class="primary" onclick="sendMessage()">إرسال</button>
+<button onclick="sendMessage()">إرسال</button>
 
 <hr>
-<div id="chatBox" style="height:300px;overflow:auto"></div>
+<div id="chatBox"></div>
 </div>
 
 </div>
@@ -194,17 +191,24 @@ display:inline-block;
 </div>
 
 <!-- ================= FIREBASE ================= -->
+
 <script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-app.js";
-import { getFirestore,
-collection, addDoc, getDocs, deleteDoc, doc, onSnapshot
+import {
+getFirestore,
+collection,
+addDoc,
+getDocs,
+query,
+where,
+onSnapshot
 } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js";
 
 const firebaseConfig = {
-apiKey:"API_KEY",
-authDomain:"man-7f10b.firebaseapp.com",
-projectId:"man-7f10b"
+apiKey:"YOUR_KEY",
+authDomain:"YOUR_DOMAIN",
+projectId:"YOUR_PROJECT"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -212,13 +216,18 @@ const db = getFirestore(app);
 
 const ADMIN_PASSWORD="22623212262321";
 
-/* ========= LOGIN ========= */
-window.adminLogin=function(){
+let currentUser="";
+let role="";
 
-let pass=document.getElementById("adminPass").value.trim();
+/* ================= LOGIN ================= */
 
-if(pass===ADMIN_PASSWORD){
+window.adminLogin = async function(){
 
+let pass = adminPass.value.trim();
+
+if(pass === ADMIN_PASSWORD){
+
+role="admin";
 login.classList.add("hidden");
 dashboard.classList.remove("hidden");
 
@@ -229,40 +238,77 @@ listenChat();
 }else{
 alert("كلمة السر خطأ ❌");
 }
+
 }
 
-/* ========= SIDEBAR ========= */
-window.toggleSidebar=function(){
-document.getElementById("sidebar").classList.toggle("open");
+window.officeLogin = async function(){
+
+let name = officeName.value.trim();
+let pass = officeKey.value.trim();
+
+let q = query(collection(db,"offices"),where("name","==",name));
+let snap = await getDocs(q);
+
+if(snap.empty){
+alert("المكتب غير موجود");
+return;
 }
+
+let officeData = null;
+
+snap.forEach(d=>officeData=d.data());
+
+if(officeData.password === pass){
+
+role="office";
+currentUser=name;
+
+login.classList.add("hidden");
+dashboard.classList.remove("hidden");
+
+loadInvoices();
+
+}else{
+alert("كلمة السر خطأ");
+}
+
+}
+
+/* ================= SIDEBAR ================= */
 
 window.showSection=function(id){
 
-document.querySelectorAll(".section").forEach(sec=>{
-sec.classList.add("hidden");
-});
+document.querySelectorAll(".section")
+.forEach(sec=>sec.classList.add("hidden"));
 
 document.getElementById(id).classList.remove("hidden");
+
 }
 
-/* ========= OFFICES ========= */
-window.createOffice=async function(){
+window.logout=function(){
+location.reload();
+}
+
+/* ================= OFFICES ================= */
+
+window.createOffice = async function(){
 
 await addDoc(collection(db,"offices"),{
-name:officeName.value,
-pass:officePass.value,
+name:newOfficeName.value,
+password:newOfficePass.value,
 country:country.value,
 region:region.value,
-active:true
+status:"active"
 });
 
 alert("تم إنشاء المكتب");
 loadOffices();
+
 }
 
 async function loadOffices(){
 
-let snap=await getDocs(collection(db,"offices"));
+let snap = await getDocs(collection(db,"offices"));
 officeList.innerHTML="";
 
 snap.forEach(d=>{
@@ -279,27 +325,30 @@ officeList.innerHTML+=`
 });
 }
 
-/* ========= INVOICES ========= */
-window.createInvoice=async function(){
+/* ================= INVOICES ================= */
+
+window.createInvoice = async function(){
 
 let code="INV-"+Math.floor(Math.random()*999999);
 
 await addDoc(collection(db,"invoices"),{
-code:code,
+code,
 client:client.value,
 items:items.value,
-office:officeTarget.value,
-status:"sent",
-date:new Date()
+toOffice:toOffice.value,
+from:role,
+status:"pending",
+createdAt:new Date()
 });
 
 alert("تم إنشاء الفاتورة");
 loadInvoices();
+
 }
 
 async function loadInvoices(){
 
-let snap=await getDocs(collection(db,"invoices"));
+let snap = await getDocs(collection(db,"invoices"));
 invoiceList.innerHTML="";
 
 snap.forEach(d=>{
@@ -309,20 +358,20 @@ invoiceList.innerHTML+=`
 <div>
 <b>${data.code}</b>
 | ${data.client}
-| ${data.office}
-| الحالة: ${data.status}
+| ${data.status}
 </div>
 <hr>
 `;
 });
 }
 
-/* ========= CHAT ========= */
-window.sendMessage=async function(){
+/* ================= CHAT ================= */
+
+window.sendMessage = async function(){
 
 await addDoc(collection(db,"chat"),{
-from:"admin",
-msg:chatMsg.value,
+sender:role,
+message:chatMsg.value,
 time:new Date()
 });
 
@@ -336,12 +385,13 @@ chatBox.innerHTML="";
 snap.forEach(d=>{
 let data=d.data();
 chatBox.innerHTML+=`
-<b>${data.from}</b> :
-${data.msg}
+<b>${data.sender}</b>:
+${data.message}
 <hr>
 `;
 });
 });
+
 }
 
 </script>
