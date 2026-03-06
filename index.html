@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>نظام شحن احترافي</title>
-
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600&display=swap" rel="stylesheet">
 <style>
 body{
@@ -150,158 +149,158 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 // ===== VARIABLES =====
-const ADMIN_PASSWORD="2262623212262321";
+const ADMIN_PASSWORD="22623212262321";
 let currentOffice="";
 
 // ===== LOGIN =====
-window.adminLogin = async function(){
-let pass = document.getElementById("adminPass").value.trim();
-if(pass===ADMIN_PASSWORD){
-login.style.display="none";
-adminPanel.style.display="block";
-loadOffices();
-loadInvoices();
-listenChat();
-}else{alert("كلمة السر خطأ ❌");}
+window.adminLogin = function(){
+    let pass = document.getElementById("adminPass").value.trim();
+    if(pass === ADMIN_PASSWORD){
+        login.style.display="none";
+        adminPanel.style.display="block";
+        loadOffices();
+        loadInvoices();
+        listenChat();
+    } else {
+        alert("كلمة السر خطأ ❌");
+    }
 }
 
 window.officeLogin = async function(){
-let name = officeName.value.trim();
-let key = officeKey.value.trim();
-if(!name || !key){alert("املأ الحقول"); return;}
-let q=query(collection(db,"offices"),where("name","==",name));
-let snap=await getDocs(q);
-if(snap.empty){alert("المكتب غير موجود"); return;}
-let officeData=null;
-snap.forEach(d=>{officeData=d.data(); officeData.id=d.id;});
-if(officeData.key===key){
-currentOffice=name;
-login.style.display="none";
-officePanel.style.display="block";
-loadMyInvoices();
-listenChatOffice();
-}else{alert("كلمة السر خطأ ❌");}
+    let name = officeName.value.trim();
+    let key = officeKey.value.trim();
+    if(!name || !key){alert("املأ الحقول"); return;}
+    let q=query(collection(db,"offices"),where("name","==",name));
+    let snap=await getDocs(q);
+    if(snap.empty){alert("المكتب غير موجود"); return;}
+    let officeData=null;
+    snap.forEach(d=>{officeData=d.data(); officeData.id=d.id;});
+    if(officeData.key===key){
+        currentOffice=name;
+        login.style.display="none";
+        officePanel.style.display="block";
+        loadMyInvoices();
+        listenChatOffice();
+    } else {alert("كلمة السر خطأ ❌");}
 }
 
 // ===== OFFICES =====
 window.createOffice = async function(){
-await addDoc(collection(db,"offices"),{
-name:newOfficeName.value,
-key:newOfficePass.value,
-country:country.value,
-region:region.value,
-active:true
-});
-alert("تم إنشاء المكتب");
-loadOffices();
+    await addDoc(collection(db,"offices"),{
+        name:newOfficeName.value,
+        key:newOfficePass.value,
+        country:country.value,
+        region:region.value,
+        active:true
+    });
+    alert("تم إنشاء المكتب");
+    loadOffices();
 }
 
 async function loadOffices(){
-let snap=await getDocs(collection(db,"offices"));
-let select=document.getElementById("selectOffice");
-let list=document.getElementById("officeList");
-select.innerHTML=""; list.innerHTML="";
-snap.forEach(d=>{
-let data=d.data();
-let opt=document.createElement("option");
-opt.value=data.name; opt.textContent=data.name; select.appendChild(opt);
-let div=document.createElement("div");
-div.innerHTML=`<b>${data.name}</b> | ${data.country} | ${data.region} 
-<button onclick="deleteOffice('${d.id}')">حذف</button>`;
-list.appendChild(div);
-});
+    let snap=await getDocs(collection(db,"offices"));
+    let select=document.getElementById("selectOffice");
+    let list=document.getElementById("officeList");
+    select.innerHTML=""; list.innerHTML="";
+    snap.forEach(d=>{
+        let data=d.data();
+        let opt=document.createElement("option");
+        opt.value=data.name; opt.textContent=data.name; select.appendChild(opt);
+        let div=document.createElement("div");
+        div.innerHTML=`<b>${data.name}</b> | ${data.country} | ${data.region} 
+        <button onclick="deleteOffice('${d.id}')">حذف</button>`;
+        list.appendChild(div);
+    });
 }
 
 window.deleteOffice = async function(id){
-await deleteDoc(doc(db,"offices",id));
-alert("تم حذف المكتب");
-loadOffices();
+    await deleteDoc(doc(db,"offices",id));
+    alert("تم حذف المكتب");
+    loadOffices();
 }
 
 // ===== INVOICES =====
 window.createInvoice = async function(){
-let code="INV-"+Math.floor(Math.random()*999999);
-await addDoc(collection(db,"invoices"),{
-code,
-client:invoiceClient.value,
-items:invoiceItems.value,
-office:selectOffice.value,
-status:"sent",
-from:"admin"
-});
-alert("تم ارسال الفاتورة");
-loadInvoices();
+    let code="INV-"+Math.floor(Math.random()*999999);
+    await addDoc(collection(db,"invoices"),{
+        code,
+        client:invoiceClient.value,
+        items:invoiceItems.value,
+        office:selectOffice.value,
+        status:"sent",
+        from:"admin"
+    });
+    alert("تم ارسال الفاتورة");
+    loadInvoices();
 }
 
 async function loadInvoices(){
-let snap=await getDocs(collection(db,"invoices"));
-let list=document.getElementById("invoiceList"); list.innerHTML="";
-snap.forEach(d=>{
-let data=d.data();
-list.innerHTML+=`<div><b>${data.code}</b> | ${data.client} | ${data.office} | الحالة: ${data.status}</div><hr>`;
-});
+    let snap=await getDocs(collection(db,"invoices"));
+    let list=document.getElementById("invoiceList"); list.innerHTML="";
+    snap.forEach(d=>{
+        let data=d.data();
+        list.innerHTML+=`<div><b>${data.code}</b> | ${data.client} | ${data.office} | الحالة: ${data.status}</div><hr>`;
+    });
 }
 
 window.searchInvoice = async function(){
-let code=searchCode.value.trim();
-let q=query(collection(db,"invoices"),where("code","==",code));
-let snap=await getDocs(q);
-invoiceList.innerHTML="";
-snap.forEach(d=>{invoiceList.innerHTML+=`<pre>${JSON.stringify(d.data(),null,2)}</pre><hr>`;});
+    let code=searchCode.value.trim();
+    let q=query(collection(db,"invoices"),where("code","==",code));
+    let snap=await getDocs(q);
+    invoiceList.innerHTML="";
+    snap.forEach(d=>{invoiceList.innerHTML+=`<pre>${JSON.stringify(d.data(),null,2)}</pre><hr>`;});
 }
 
 // ===== OFFICE FUNCTIONS =====
 async function loadMyInvoices(){
-let q=query(collection(db,"invoices"),where("office","==",currentOffice));
-onSnapshot(q,(snap)=>{
-myInvoices.innerHTML="";
-snap.forEach(d=>{
-let data=d.data();
-myInvoices.innerHTML+=`<div><b>${data.code}</b> | ${data.client} | الحالة: ${data.status}
-<br>
-<button onclick="approveInvoice('${d.id}')">موافقة</button>
-<button onclick="deleteInvoice('${d.id}')">حذف</button></div><hr>`;
-});
-});
+    let q=query(collection(db,"invoices"),where("office","==",currentOffice));
+    onSnapshot(q,(snap)=>{
+        myInvoices.innerHTML="";
+        snap.forEach(d=>{
+            let data=d.data();
+            myInvoices.innerHTML+=`<div><b>${data.code}</b> | ${data.client} | الحالة: ${data.status}
+            <br><button onclick="approveInvoice('${d.id}')">موافقة</button>
+            <button onclick="deleteInvoice('${d.id}')">حذف</button></div><hr>`;
+        });
+    });
 }
 
 window.searchMyInvoice = async function(){
-let code=searchMyInvoice.value.trim();
-let q=query(collection(db,"invoices"),where("office","==",currentOffice),where("code","==",code));
-let snap=await getDocs(q);
-myInvoices.innerHTML="";
-snap.forEach(d=>{
-myInvoices.innerHTML+=`<div><b>${d.data().code}</b> | ${d.data().client} | الحالة: ${d.data().status}</div><hr>`;
-});
+    let code=searchMyInvoice.value.trim();
+    let q=query(collection(db,"invoices"),where("office","==",currentOffice),where("code","==",code));
+    let snap=await getDocs(q);
+    myInvoices.innerHTML="";
+    snap.forEach(d=>{
+        myInvoices.innerHTML+=`<div><b>${d.data().code}</b> | ${d.data().client} | الحالة: ${d.data().status}</div><hr>`;
+    });
 }
 
 window.approveInvoice = async function(id){
-await updateDoc(doc(db,"invoices",id),{status:"approved"});
+    await updateDoc(doc(db,"invoices",id),{status:"approved"});
 }
 
 // ===== CHAT =====
 window.sendMessage = async function(){
-await addDoc(collection(db,"chat"),{from:"admin",msg:chatMsg.value,time:new Date()});
-chatMsg.value="";
+    await addDoc(collection(db,"chat"),{from:"admin",msg:chatMsg.value,time:new Date()});
+    chatMsg.value="";
 }
 function listenChat(){
-onSnapshot(collection(db,"chat"),snap=>{
-chatBox.innerHTML="";
-snap.forEach(d=>{let data=d.data(); chatBox.innerHTML+=`<b>${data.from}</b>: ${data.msg}<hr>`;});
-});
-
+    onSnapshot(collection(db,"chat"),snap=>{
+        chatBox.innerHTML="";
+        snap.forEach(d=>{let data=d.data(); chatBox.innerHTML+=`<b>${data.from}</b>: ${data.msg}<hr>`;});
+    });
 }
 
 window.sendMessageOffice = async function(){
-await addDoc(collection(db,"chat"),{from:currentOffice,msg:chatMsgOffice.value,time:new Date()});
-chatMsgOffice.value="";
+    await addDoc(collection(db,"chat"),{from:currentOffice,msg:chatMsgOffice.value,time:new Date()});
+    chatMsgOffice.value="";
 }
 
 function listenChatOffice(){
-onSnapshot(collection(db,"chat"),snap=>{
-chatBoxOffice.innerHTML="";
-snap.forEach(d=>{let data=d.data(); chatBoxOffice.innerHTML+=`<b>${data.from}</b>: ${data.msg}<hr>`;});
-});
+    onSnapshot(collection(db,"chat"),snap=>{
+        chatBoxOffice.innerHTML="";
+        snap.forEach(d=>{let data=d.data(); chatBoxOffice.innerHTML+=`<b>${data.from}</b>: ${data.msg}<hr>`;});
+    });
 }
 </script>
 </body>
