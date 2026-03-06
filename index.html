@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>متجر احترافي</title>
+
+<style>
+:root{
+    --bg:#ffffff;
+    --text:#000000;
+    --card:#f2f2f2;
+}
+body.night{
+    --bg:#000000;
+    --text:#ffffff;
+    --card:#111111;
+}
+
+body{
+    margin:0;
+    font-family:Arial, sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    transition:.4s;
+}
+
+.container{
+    max-width:1100px;
+    margin:auto;
+    padding:20px;
+}
+
+.hidden{display:none}
+
+input,select,textarea,button{
+    width:100%;
+    padding:10px;
+    margin-top:8px;
+    border:1px solid var(--text);
+    background:transparent;
+    color:var(--text);
+    font-size:16px;
+}
+
+button{
+    cursor:pointer;
+}
+
+.card{
+    background:var(--card);
+    padding:15px;
+    border-radius:14px;
+    margin-top:15px;
+}
+
+.header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    flex-wrap:wrap;
+    gap:10px;
+}
+
+.products{
+    display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(250px,1fr));
+    gap:15px;
+    margin-top:20px;
+}
+
+.product{
+    background:var(--card);
+    border-radius:16px;
+    overflow:hidden;
+}
+
+.product img{
+    width:100%;
+    height:220px;
+    object-fit:cover;
+}
+
+.product .info{
+    padding:12px;
+}
+
+.price{
+    font-weight:bold;
+    margin-top:6px;
+}
+</style>
+</head>
+
+<body>
+
+<!-- صفحة الإعداد -->
+<div class="container" id="setup">
+    <h2>إعداد المتجر</h2>
+
+    <input id="shopName" placeholder="اسم المتجر (اسم واحد فقط)">
+
+    <select id="mode">
+        <option value="always">مفتوح دائمًا</option>
+        <option value="time">حسب الوقت</option>
+    </select>
+
+    <div id="timeBox" class="hidden">
+        <input type="time" id="openTime">
+        <input type="time" id="closeTime">
+    </div>
+
+    <button onclick="saveShop()">💾 حفظ المعلومات</button>
+</div>
+
+<!-- صفحة النشر -->
+<div class="container hidden" id="publish">
+    <div class="header">
+        <h2 id="shopTitle"></h2>
+        <button onclick="toggleProductForm()">➕ إضافة منتج</button>
+    </div>
+
+    <!-- نموذج إضافة منتج -->
+    <div id="productForm" class="card hidden">
+        <input type="file" id="imgFile" accept="image/*">
+        <textarea id="desc" placeholder="وصف المنتج"></textarea>
+        <input id="colors" placeholder="عدد الألوان">
+        <input id="qty" placeholder="عدد القطع">
+        <input id="price" placeholder="السعر">
+        <button onclick="addProduct()">إضافة المنتج</button>
+    </div>
+
+    <!-- عرض المنتجات -->
+    <div class="products" id="products"></div>
+</div>
+
+<script>
+const setup = document.getElementById("setup");
+const publish = document.getElementById("publish");
+
+mode.onchange = () => {
+    timeBox.classList.toggle("hidden", mode.value !== "time");
+};
+
+function saveShop(){
+    const name = shopName.value.trim();
+    if(!name || name.includes(" ")){
+        alert("❌ الرجاء إدخال اسم واحد فقط");
+        return;
+    }
+
+    let night = false;
+    let status = "مفتوح 🟢";
+    const hour = new Date().getHours();
+
+    if(mode.value === "time"){
+        const o = parseInt(openTime.value.split(":")[0]);
+        const c = parseInt(closeTime.value.split(":")[0]);
+        if(hour < o || hour >= c){
+            status = "مغلق 🔴";
+            night = true;
+        }
+    }
+
+    if(hour >= 18 || hour < 6) night = true;
+    document.body.classList.toggle("night", night);
+
+    shopTitle.innerHTML = `${name} - ${status} ${night ? "🌙" : "🌞"}`;
+    setup.classList.add("hidden");
+    publish.classList.remove("hidden");
+}
+
+function toggleProductForm(){
+    productForm.classList.toggle("hidden");
+}
+
+function addProduct(){
+    const file = imgFile.files[0];
+    if(!file){
+        alert("❌ الرجاء اختيار صورة");
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = function(e){
+        products.innerHTML += `
+        <div class="product">
+            <img src="${e.target.result}">
+            <div class="info">
+                <div>${desc.value}</div>
+                <div>🎨 الألوان: ${colors.value}</div>
+                <div>📦 الكمية: ${qty.value}</div>
+                <div class="price">💰 ${price.value}</div>
+            </div>
+        </div>`;
+    };
+    reader.readAsDataURL(file);
+
+    imgFile.value = desc.value = colors.value = qty.value = price.value = "";
+    productForm.classList.add("hidden");
+}
+</script>
+
+</body>
+</html>
