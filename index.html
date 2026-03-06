@@ -2,202 +2,214 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>متجر احترافي</title>
-
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>نظام إدارة الشحن</title>
 <style>
-:root{
-    --bg:#ffffff;
-    --text:#000000;
-    --card:#f2f2f2;
-}
-body.night{
-    --bg:#000000;
-    --text:#ffffff;
-    --card:#111111;
-}
-
-body{
-    margin:0;
-    font-family:Arial, sans-serif;
-    background:var(--bg);
-    color:var(--text);
-    transition:.4s;
-}
-
-.container{
-    max-width:1100px;
-    margin:auto;
-    padding:20px;
-}
-
-.hidden{display:none}
-
-input,select,textarea,button{
-    width:100%;
-    padding:10px;
-    margin-top:8px;
-    border:1px solid var(--text);
-    background:transparent;
-    color:var(--text);
-    font-size:16px;
-}
-
-button{
-    cursor:pointer;
-}
-
-.card{
-    background:var(--card);
-    padding:15px;
-    border-radius:14px;
-    margin-top:15px;
-}
-
-.header{
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    flex-wrap:wrap;
-    gap:10px;
-}
-
-.products{
-    display:grid;
-    grid-template-columns:repeat(auto-fill,minmax(250px,1fr));
-    gap:15px;
-    margin-top:20px;
-}
-
-.product{
-    background:var(--card);
-    border-radius:16px;
-    overflow:hidden;
-}
-
-.product img{
-    width:100%;
-    height:220px;
-    object-fit:cover;
-}
-
-.product .info{
-    padding:12px;
-}
-
-.price{
-    font-weight:bold;
-    margin-top:6px;
-}
+body{font-family:Arial;margin:0;background:#f4f4f4}
+.login{display:flex;flex-direction:column;gap:10px;max-width:320px;margin:80px auto}
+input,button,select{padding:10px;font-size:14px}
+.sidebar{width:220px;background:#111;color:#fff;height:100vh;position:fixed;top:0;right:0;padding:20px}
+.sidebar a{display:block;color:#fff;margin:10px 0;text-decoration:none}
+.content{margin-right:240px;padding:20px}
+.card{background:#fff;padding:20px;border-radius:8px;margin-bottom:20px}
 </style>
 </head>
-
 <body>
 
-<!-- صفحة الإعداد -->
-<div class="container" id="setup">
-    <h2>إعداد المتجر</h2>
-
-    <input id="shopName" placeholder="اسم المتجر (اسم واحد فقط)">
-
-    <select id="mode">
-        <option value="always">مفتوح دائمًا</option>
-        <option value="time">حسب الوقت</option>
-    </select>
-
-    <div id="timeBox" class="hidden">
-        <input type="time" id="openTime">
-        <input type="time" id="closeTime">
-    </div>
-
-    <button onclick="saveShop()">💾 حفظ المعلومات</button>
+<div id="login" class="login">
+<h2>تسجيل الدخول</h2>
+<input id="officeName" placeholder="اسم المكتب">
+<input id="officeKey" placeholder="المفتاح">
+<button onclick="officeLogin()">دخول مكتب</button>
+<hr>
+<button onclick="adminLogin()">دخول المدير العام</button>
 </div>
 
-<!-- صفحة النشر -->
-<div class="container hidden" id="publish">
-    <div class="header">
-        <h2 id="shopTitle"></h2>
-        <button onclick="toggleProductForm()">➕ إضافة منتج</button>
-    </div>
+<div id="adminPanel" style="display:none">
+<div class="sidebar">
+<h3>المدير</h3>
+<a onclick="show('createInvoice')">إنشاء فاتورة</a>
+<a onclick="show('createOffice')">إنشاء مكتب</a>
+<a onclick="show('messages')">رسائل المكاتب</a>
+<a onclick="show('allInvoices')">كل الفواتير</a>
+<a onclick="show('accounts')">حسابات المكاتب</a>
+</div>
 
-    <!-- نموذج إضافة منتج -->
-    <div id="productForm" class="card hidden">
-        <input type="file" id="imgFile" accept="image/*">
-        <textarea id="desc" placeholder="وصف المنتج"></textarea>
-        <input id="colors" placeholder="عدد الألوان">
-        <input id="qty" placeholder="عدد القطع">
-        <input id="price" placeholder="السعر">
-        <button onclick="addProduct()">إضافة المنتج</button>
-    </div>
+<div class="content">
+<div id="createInvoice" class="card">
+<h3>إنشاء فاتورة</h3>
+<input id="client" placeholder="اسم العميل">
+<input id="items" placeholder="البضاعة">
+<select id="targetOffice"></select>
+<button onclick="createInvoice()">حفظ الفاتورة</button>
+</div>
 
-    <!-- عرض المنتجات -->
-    <div class="products" id="products"></div>
+<div id="createOffice" class="card" style="display:none">
+<h3>إنشاء مكتب</h3>
+<input id="newOfficeName" placeholder="اسم المكتب">
+<input id="newOfficeKey" placeholder="كلمة السر">
+<input id="country" placeholder="البلد">
+<input id="region" placeholder="المنطقة">
+<button onclick="createOffice()">إنشاء</button>
+</div>
+
+<div id="messages" class="card" style="display:none">
+<h3>رسائل المكاتب</h3>
+<div id="msgList"></div>
+</div>
+
+<div id="allInvoices" class="card" style="display:none">
+<h3>كل الفواتير</h3>
+<div id="invoiceList"></div>
+</div>
+
+<div id="accounts" class="card" style="display:none">
+<h3>المكاتب</h3>
+<div id="officeList"></div>
+</div>
+</div>
+</div>
+
+<div id="officePanel" style="display:none">
+<div class="sidebar">
+<h3>المكتب</h3>
+<a onclick="showOffice('incoming')">الفواتير الواردة</a>
+</div>
+
+<div class="content">
+<div id="incoming" class="card">
+<h3>الفواتير</h3>
+<div id="officeInvoices"></div>
+</div>
+</div>
 </div>
 
 <script>
-const setup = document.getElementById("setup");
-const publish = document.getElementById("publish");
+const ADMIN_PASSWORD = "22623212262321"
 
-mode.onchange = () => {
-    timeBox.classList.toggle("hidden", mode.value !== "time");
-};
+let offices = JSON.parse(localStorage.getItem("offices")||"[]")
+let invoices = JSON.parse(localStorage.getItem("invoices")||"[]")
+let currentOffice = null
 
-function saveShop(){
-    const name = shopName.value.trim();
-    if(!name || name.includes(" ")){
-        alert("❌ الرجاء إدخال اسم واحد فقط");
-        return;
-    }
-
-    let night = false;
-    let status = "مفتوح 🟢";
-    const hour = new Date().getHours();
-
-    if(mode.value === "time"){
-        const o = parseInt(openTime.value.split(":")[0]);
-        const c = parseInt(closeTime.value.split(":")[0]);
-        if(hour < o || hour >= c){
-            status = "مغلق 🔴";
-            night = true;
-        }
-    }
-
-    if(hour >= 18 || hour < 6) night = true;
-    document.body.classList.toggle("night", night);
-
-    shopTitle.innerHTML = `${name} - ${status} ${night ? "🌙" : "🌞"}`;
-    setup.classList.add("hidden");
-    publish.classList.remove("hidden");
+function adminLogin(){
+let pass = prompt("ادخل كلمة مرور المدير")
+if(pass===ADMIN_PASSWORD){
+document.getElementById("login").style.display="none"
+document.getElementById("adminPanel").style.display="block"
+refreshOffices()
+renderInvoices()
+}
 }
 
-function toggleProductForm(){
-    productForm.classList.toggle("hidden");
+function createOffice(){
+let name=document.getElementById("newOfficeName").value
+let key=document.getElementById("newOfficeKey").value
+let country=document.getElementById("country").value
+let region=document.getElementById("region").value
+
+offices.push({name,key,country,region,active:false})
+localStorage.setItem("offices",JSON.stringify(offices))
+refreshOffices()
 }
 
-function addProduct(){
-    const file = imgFile.files[0];
-    if(!file){
-        alert("❌ الرجاء اختيار صورة");
-        return;
-    }
+function refreshOffices(){
+let select=document.getElementById("targetOffice")
+let list=document.getElementById("officeList")
+select.innerHTML=""
+list.innerHTML=""
 
-    const reader = new FileReader();
-    reader.onload = function(e){
-        products.innerHTML += `
-        <div class="product">
-            <img src="${e.target.result}">
-            <div class="info">
-                <div>${desc.value}</div>
-                <div>🎨 الألوان: ${colors.value}</div>
-                <div>📦 الكمية: ${qty.value}</div>
-                <div class="price">💰 ${price.value}</div>
-            </div>
-        </div>`;
-    };
-    reader.readAsDataURL(file);
+offices.forEach(o=>{
+let op=document.createElement("option")
+op.value=o.name
+op.textContent=o.name
+select.appendChild(op)
 
-    imgFile.value = desc.value = colors.value = qty.value = price.value = "";
-    productForm.classList.add("hidden");
+let div=document.createElement("div")
+div.textContent=`${o.name} | ${o.country} | ${o.region}`
+list.appendChild(div)
+})
+}
+
+function createInvoice(){
+let client=document.getElementById("client").value
+let items=document.getElementById("items").value
+let office=document.getElementById("targetOffice").value
+let code="INV"+Math.floor(Math.random()*1000000)
+
+invoices.push({client,items,office,code,date:new Date().toLocaleDateString()})
+localStorage.setItem("invoices",JSON.stringify(invoices))
+renderInvoices()
+}
+
+function renderInvoices(){
+let list=document.getElementById("invoiceList")
+list.innerHTML=""
+
+invoices.forEach((i,index)=>{
+let div=document.createElement("div")
+div.innerHTML=`${i.code} - ${i.client} - ${i.office}
+<button onclick="deleteInvoice(${index})">حذف</button>`
+list.appendChild(div)
+})
+}
+
+function deleteInvoice(i){
+invoices.splice(i,1)
+localStorage.setItem("invoices",JSON.stringify(invoices))
+renderInvoices()
+}
+
+function officeLogin(){
+let name=document.getElementById("officeName").value
+let key=document.getElementById("officeKey").value
+
+let office=offices.find(o=>o.name===name && o.key===key)
+
+if(office){
+currentOffice=name
+office.active=true
+localStorage.setItem("offices",JSON.stringify(offices))
+
+document.getElementById("login").style.display="none"
+document.getElementById("officePanel").style.display="block"
+renderOfficeInvoices()
+}else{
+alert("بيانات غير صحيحة")
+}
+}
+
+function renderOfficeInvoices(){
+let div=document.getElementById("officeInvoices")
+div.innerHTML=""
+
+invoices.filter(i=>i.office===currentOffice).forEach(i=>{
+let el=document.createElement("div")
+el.innerHTML=`${i.code} - ${i.client} - ${i.items}
+<button onclick="downloadPDF('${i.code}','${i.client}','${i.items}')">PDF</button>`
+
+div.appendChild(el)
+})
+}
+
+function downloadPDF(code,client,items){
+let text=`فاتورة\\nالكود: ${code}\\nالعميل: ${client}\\nالبضاعة: ${items}`
+let blob=new Blob([text],{type:"application/pdf"})
+let a=document.createElement("a")
+a.href=URL.createObjectURL(blob)
+a.download="invoice.pdf"
+a.click()
+}
+
+function show(id){
+["createInvoice","createOffice","messages","allInvoices","accounts"].forEach(s=>{
+document.getElementById(s).style.display="none"
+})
+document.getElementById(id).style.display="block"
+}
+
+function showOffice(id){
+document.getElementById("incoming").style.display="none"
+document.getElementById(id).style.display="block"
 }
 </script>
 
