@@ -294,6 +294,7 @@ function openOffice(key){
   document.getElementById("officeTitle").innerText="مكتب "+office.responsible;
   openSection("officeView");
   const chatBox=document.getElementById("chatBox"); chatBox.innerHTML="";
+  // استمع لرسائل المكتب
   db.ref('messages/'+key).on('value',snap=>{
     chatBox.innerHTML="";
     snap.forEach(s=>{
@@ -354,11 +355,13 @@ db.ref('invoices').on('value',snap=>{
   renderInvoices(); renderAllInvoicesInSearch();
 });
 
+// عرض الفواتير
 function renderInvoices(){
   const list=document.getElementById("invoiceList"); list.innerHTML="";
   invoices.forEach(inv=>{
+    const date=new Date(inv.timestamp).toLocaleString();
     list.innerHTML+=`<div class="invoiceItem">
-      رقم التتبع: ${inv.tracking}<br>المستلم: ${inv.receiver}<br>المدينة: ${inv.city}
+      رقم التتبع: ${inv.tracking}<br>المرسل: ${inv.sender}<br>المستلم: ${inv.receiver}<br>المدينة: ${inv.city}<br>العنوان: ${inv.address}<br>النوع: ${inv.type}<br>القطع: ${inv.pieces}<br>الوزن: ${inv.weight}<br>تكلفة الشحن: ${inv.cost}<br>COD: ${inv.cod}<br>التاريخ: ${date}
       <div class="invoiceControls">
         <button onclick="editInvoice('${inv.key}')">تعديل</button>
         <button onclick="deleteInvoice('${inv.key}')">حذف</button>
@@ -367,12 +370,7 @@ function renderInvoices(){
   });
 }
 
-function updateOfficeSelect(){
-  const select=document.getElementById("officeSelect"); select.innerHTML="";
-  offices.forEach(o=>{select.innerHTML+=`<option value="${o.key}">${o.responsible}</option>`});
-}
-
-// تعديل وحذف الفواتير
+// تعديل وحذف
 function deleteInvoice(key){ if(confirm("هل تريد حذف الفاتورة؟")) db.ref('invoices/'+key).remove(); }
 function editInvoice(key){
   const inv=invoices.find(i=>i.key===key);
@@ -416,7 +414,28 @@ function saveSettings(){
   document.getElementById("siteTitle").innerText=siteName+" - لوحة التحكم";
   document.getElementById("logoText").innerText=siteName;
   document.getElementById("logoChar").innerText=siteName[0];
+  db.ref('settings/siteName').set(siteName);
   alert("تم حفظ الإعدادات");
+}
+
+// استماع لتغير اسم الموقع من Firebase
+db.ref('settings/siteName').on('value',snap=>{
+  const newName = snap.val();
+  if(newName){
+    document.getElementById("logoText").innerText = newName;
+    document.getElementById("logoChar").innerText = newName[0];
+    if(currentUser==="admin") document.getElementById("siteTitle").innerText = newName+" - لوحة التحكم";
+    else if(currentUser?.type==="office"){
+      const office=offices.find(o=>o.key===currentUser.key);
+      document.getElementById("siteTitle").innerText = newName+" - مكتب "+(office?office.responsible:"");
+    }
+  }
+});
+
+// تحديث select المكاتب للفواتير
+function updateOfficeSelect(){
+  const select=document.getElementById("officeSelect"); select.innerHTML="";
+  offices.forEach(o=>{select.innerHTML+=`<option value="${o.key}">${o.responsible}</option>`});
 }
 </script>
 </body>
