@@ -107,12 +107,12 @@ input{padding:8px;margin:5px;border-radius:6px;border:none;}
 
 </div>
 
-<!-- Firebase -->
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-app.js";
-import { getDatabase, ref, push, onValue, update } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-database.js";
-import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-analytics.js";
+<!-- Firebase Compat SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-analytics-compat.js"></script>
 
+<script>
 const firebaseConfig = {
   apiKey: "AIzaSyAT3GvhnBAbUykGXhy9O_RvHsO80UO2cYE",
   authDomain: "man-7f10b.firebaseapp.com",
@@ -124,9 +124,9 @@ const firebaseConfig = {
   measurementId: "G-HM4MD6PYFP"
 };
 
-const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
-const db = getDatabase(app);
+firebase.initializeApp(firebaseConfig);
+firebase.analytics();
+const db = firebase.database();
 
 /* الواجهة */
 const sidebar = document.getElementById("sidebar");
@@ -141,8 +141,8 @@ function openSection(id){
 let offices = [];
 let currentOffice = null;
 
-function createOffice(){
-  let office = {
+window.createOffice = function(){
+  const office = {
     responsible: document.getElementById("responsible").value,
     country: document.getElementById("country").value,
     city: document.getElementById("city").value,
@@ -150,7 +150,7 @@ function createOffice(){
     phone: document.getElementById("phone").value,
     notifications: 0
   };
-  const newRef = push(ref(db,'offices'), office);
+  firebase.database().ref('offices').push(office);
   alert("تم إنشاء المكتب وحفظه في Firebase");
   document.getElementById("responsible").value = "";
   document.getElementById("country").value = "";
@@ -159,8 +159,8 @@ function createOffice(){
   document.getElementById("phone").value = "";
 }
 
-/* قراءة المكاتب من Firebase */
-onValue(ref(db,'offices'), snapshot=>{
+/* قراءة المكاتب */
+firebase.database().ref('offices').on('value', snapshot=>{
   offices = [];
   snapshot.forEach(s=>{
     offices.push({ key:s.key, ...s.val() });
@@ -170,7 +170,7 @@ onValue(ref(db,'offices'), snapshot=>{
 });
 
 function renderOffices(){
-  let list = document.getElementById("officeList");
+  const list = document.getElementById("officeList");
   list.innerHTML = "";
   offices.forEach((o,i)=>{
     list.innerHTML+=`
@@ -183,20 +183,18 @@ function renderOffices(){
   });
 }
 
-function openOffice(key){
+window.openOffice = function(key){
   currentOffice = key;
-  const officeRef = ref(db,'offices/'+key);
-  update(officeRef,{notifications:0}); // إعادة تعيين الاشعارات
-  document.getElementById("officeTitle").innerText = "مكتب "+offices.find(o=>o.key===key).responsible;
+  firebase.database().ref('offices/'+key).update({notifications:0});
+  const office = offices.find(o=>o.key===key);
+  document.getElementById("officeTitle").innerText = "مكتب "+office.responsible;
   const chatBox = document.getElementById("chatBox");
   chatBox.innerHTML = "";
 
-  // تحميل الرسائل من Firebase
-  const messagesRef = ref(db,'messages/'+key);
-  onValue(messagesRef, snapshot=>{
-    chatBox.innerHTML="";
+  firebase.database().ref('messages/'+key).on('value', snapshot=>{
+    chatBox.innerHTML = "";
     snapshot.forEach(s=>{
-      chatBox.innerHTML+=`<div>${s.val().text}</div>`;
+      chatBox.innerHTML += `<div>${s.val().text}</div>`;
     });
     chatBox.scrollTop = chatBox.scrollHeight;
   });
@@ -205,11 +203,11 @@ function openOffice(key){
 }
 
 /* الرسائل */
-function sendMessage(){
+window.sendMessage = function(){
   const input = document.getElementById("chatInput");
   const msg = input.value;
   if(msg.trim()==="") return;
-  push(ref(db,'messages/'+currentOffice), { text:"🟢 "+msg });
+  firebase.database().ref('messages/'+currentOffice).push({ text:"🟢 "+msg });
   input.value = "";
 }
 
@@ -220,7 +218,7 @@ function tracking(){
   return "TRK-"+Math.floor(Math.random()*1000000);
 }
 
-function createInvoice(){
+window.createInvoice = function(){
   const invoice = {
     tracking: tracking(),
     sender: document.getElementById("sender").value,
@@ -234,13 +232,12 @@ function createInvoice(){
     cost: document.getElementById("shippingCost").value,
     cod: document.getElementById("codAmount").value
   };
-  const newRef = push(ref(db,'invoices'), invoice);
+  firebase.database().ref('invoices').push(invoice);
   alert("تم إنشاء الفاتورة وحفظها في Firebase");
-  renderInvoices();
 }
 
 /* قراءة الفواتير */
-onValue(ref(db,'invoices'), snapshot=>{
+firebase.database().ref('invoices').on('value', snapshot=>{
   invoices = [];
   snapshot.forEach(s=>{
     invoices.push({ key:s.key, ...s.val() });
@@ -263,7 +260,7 @@ function renderInvoices(){
   });
 }
 
-function toggleSendBox(){
+window.toggleSendBox = function(){
   const checks = document.querySelectorAll(".invCheck:checked");
   document.getElementById("sendInvoicesBox").style.display = checks.length>0?"block":"none";
 }
@@ -276,13 +273,12 @@ function updateOfficeSelect(){
   });
 }
 
-function sendSelectedInvoices(){
+window.sendSelectedInvoices = function(){
   const officeKey = document.getElementById("officeSelect").value;
   const checks = document.querySelectorAll(".invCheck:checked");
   const chatBox = document.getElementById("chatBox");
   checks.forEach(c=>{
     const inv = invoices[c.value];
-    // إنشاء PDF
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
     doc.text("فاتورة شحن",90,10);
@@ -297,8 +293,7 @@ function sendSelectedInvoices(){
     doc.text("COD: "+inv.cod,10,110);
     const pdf = doc.output("datauristring");
 
-    // إرسال الفاتورة للمكتب
-    push(ref(db,'messages/'+officeKey), { text:"📄 فاتورة "+inv.tracking+" | رابط PDF", pdf });
+    firebase.database().ref('messages/'+officeKey).push({ text:"📄 فاتورة "+inv.tracking+" | رابط PDF", pdf });
   });
   alert("تم إرسال الفواتير");
 }
