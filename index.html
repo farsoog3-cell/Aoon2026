@@ -1,399 +1,307 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="ar">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>نظام شحن متكامل</title>
+<title>Zom Admin</title>
 
-<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 <style>
-*{margin:0;padding:0;box-sizing:border-box;font-family:'Cairo',sans-serif}
-
-body{
-background:#0f172a;
-color:white;
-}
-
-.hidden{display:none}
-
-/* ===== LOGIN ===== */
-#login{
-max-width:400px;
-margin:100px auto;
-background:white;
-color:black;
-padding:30px;
-border-radius:20px;
-box-shadow:0 10px 40px rgba(0,0,0,0.3);
-}
-
-input,select{
-width:100%;
-padding:10px;
-margin:6px 0;
-border-radius:8px;
-border:1px solid #ccc;
-}
-
-button{
-background:#2563eb;
-color:white;
-border:none;
-padding:10px;
-border-radius:8px;
-cursor:pointer;
-transition:0.3s;
-}
-
-button:hover{
-background:#1d4ed8;
-transform:scale(1.05);
-}
-
-/* ===== DASHBOARD ===== */
-
-.container{
-display:flex;
-min-height:100vh;
-}
-
-/* SIDEBAR */
-
-.sidebar{
-width:250px;
-background:#111827;
-padding:20px;
-}
-
-.sidebar a{
-display:block;
-padding:12px;
-margin-bottom:8px;
-border-radius:6px;
-cursor:pointer;
-}
-
-.sidebar a:hover{
-background:#2563eb;
-}
-
-/* CONTENT */
-
-.content{
-flex:1;
-padding:30px;
-}
-
-.card{
-background:#1e293b;
-padding:20px;
-border-radius:16px;
-margin-bottom:20px;
-box-shadow:0 5px 20px rgba(0,0,0,0.3);
-}
-
-/* MOBILE */
-
-@media(max-width:900px){
-.container{
-flex-direction:column;
-}
-.sidebar{
-width:100%;
-}
-}
+*{margin:0;padding:0;box-sizing:border-box;font-family:Arial}
+body{background:#0b0b0b;color:white;}
+header{height:65px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;border-bottom:1px solid rgba(255,255,255,0.05);}
+.logo{font-size:24px;font-weight:bold;}
+.logo span{color:#00ff88;font-size:30px;}
+.menu{font-size:22px;cursor:pointer;}
+.bell{position:relative;cursor:pointer;font-size:20px;}
+.bell span{position:absolute;top:-6px;right:-10px;background:red;border-radius:50%;font-size:12px;padding:2px 6px;display:none;}
+.sidebar{position:fixed;top:0;right:-260px;width:260px;height:100%;background:#111;padding:25px;transition:0.3s;}
+.sidebar.active{right:0;}
+.sidebar a{display:block;padding:12px 0;border-bottom:1px solid rgba(255,255,255,0.05);cursor:pointer;}
+.content{padding:30px;}
+.section{display:none;}
+.section.active{display:block;}
+.office{background:#111;padding:15px;margin-top:10px;border-radius:8px;cursor:pointer;}
+.chatContainer{display:flex;flex-direction:column;height:60vh;border:1px solid rgba(255,255,255,0.1);padding:10px;background:#111;}
+.chat{flex:1;overflow:auto;margin-bottom:5px;}
+.chatControls{display:flex;gap:5px;}
+.chatControls input{flex:1;padding:8px;}
+button{padding:8px 12px;border:none;background:#00ff88;border-radius:6px;cursor:pointer;}
+input{padding:8px;margin:5px;border-radius:6px;border:none;}
+.invoiceItem{background:#111;padding:10px;margin-top:10px;border-radius:6px;}
 </style>
-
 </head>
+
 <body>
 
-<!-- ================= LOGIN ================= -->
-
-<div id="login">
-
-<h2>🚀 تسجيل الدخول</h2>
-
-<h3>دخول الادمن</h3>
-<input id="adminPass" type="password" placeholder="كلمة السر">
-<button onclick="adminLogin()">دخول</button>
-
-<hr>
-
-<h3>دخول المكتب</h3>
-<input id="officeName" placeholder="اسم المكتب">
-<input id="officeKey" type="password" placeholder="كلمة السر">
-<button onclick="officeLogin()">دخول</button>
-
+<header>
+<div class="logo"><span>Z</span>om</div>
+<div style="display:flex;gap:15px">
+<div class="bell" onclick="openSection('offices')">🔔<span id="notificationCount">0</span></div>
+<div class="menu" onclick="toggleMenu()">☰</div>
 </div>
+</header>
 
-<!-- ================= DASHBOARD ================= -->
-
-<div id="dashboard" class="hidden">
-
-<div class="container">
-
-<div class="sidebar">
-
-<h3>لوحة التحكم</h3>
-
-<a onclick="showSection('offices')">🏢 المكاتب</a>
-<a onclick="showSection('invoices')">📦 الفواتير</a>
-<a onclick="showSection('chat')">💬 الدردشة</a>
-<a onclick="logout()">🚪 خروج</a>
-
+<div class="sidebar" id="sidebar">
+<h2>لوحة التحكم</h2>
+<a onclick="openSection('createOffice')">إنشاء مكتب</a>
+<a onclick="openSection('offices')">المكاتب</a>
+<a onclick="openSection('invoices')">الفواتير</a>
 </div>
 
 <div class="content">
 
-<!-- OFFICES -->
-<div id="offices" class="card section">
-<h3>إدارة المكاتب</h3>
+<!-- إنشاء مكتب -->
+<div id="createOffice" class="section">
+<h2>إنشاء مكتب</h2>
+<input id="responsible" placeholder="اسم المسئول"><br>
+<input id="country" placeholder="الدولة"><br>
+<input id="city" placeholder="المدينة"><br>
+<input id="area" placeholder="المنطقة"><br>
+<input id="phone" placeholder="الهاتف"><br>
+<button onclick="createOffice()">إنشاء</button>
+</div>
 
-<input id="newOfficeName" placeholder="اسم المكتب">
-<input id="newOfficePass" placeholder="كلمة السر">
-<input id="country" placeholder="البلد">
-<input id="region" placeholder="المحافظة">
-
-<button onclick="createOffice()">إنشاء مكتب</button>
-
-<hr>
+<!-- المكاتب -->
+<div id="offices" class="section">
+<h2>المكاتب</h2>
 <div id="officeList"></div>
 </div>
 
-<!-- INVOICES -->
-<div id="invoices" class="card section hidden">
-<h3>الفواتير</h3>
-
-<input id="client" placeholder="اسم العميل">
-<input id="items" placeholder="البضاعة">
-<input id="toOffice" placeholder="اسم المكتب المستلم">
-
-<button onclick="createInvoice()">إنشاء فاتورة</button>
-
-<hr>
-<div id="invoiceList"></div>
-</div>
-
-<!-- CHAT -->
-<div id="chat" class="card section hidden">
-<h3>الدردشة</h3>
-
-<input id="chatMsg" placeholder="اكتب رسالة">
+<!-- عرض مكتب -->
+<div id="officeView" class="section">
+<h2 id="officeTitle"></h2>
+<div class="chatContainer">
+<div id="chatBox" class="chat"></div>
+<div class="chatControls">
+<input id="chatInput" placeholder="اكتب رسالة">
 <button onclick="sendMessage()">إرسال</button>
-
-<hr>
-<div id="chatBox"></div>
-</div>
-
 </div>
 </div>
 </div>
 
-<!-- ================= FIREBASE ================= -->
+<!-- الفواتير -->
+<div id="invoices" class="section">
+<h2>إنشاء فاتورة شحن</h2>
+<input id="sender" placeholder="اسم المرسل"><br>
+<input id="receiver" placeholder="اسم المستلم"><br>
+<input id="receiverPhone" placeholder="هاتف المستلم"><br>
+<input id="cityReceiver" placeholder="مدينة المستلم"><br>
+<input id="addressReceiver" placeholder="العنوان"><br>
+<input id="shipmentType" placeholder="نوع الشحنة"><br>
+<input id="pieces" placeholder="عدد القطع"><br>
+<input id="weight" placeholder="الوزن"><br>
+<input id="shippingCost" placeholder="تكلفة الشحن"><br>
+<input id="codAmount" placeholder="COD"><br>
+<button onclick="createInvoice()">إنشاء الفاتورة</button>
 
+<h3>الفواتير</h3>
+<div id="invoiceList"></div>
+
+<div id="sendInvoicesBox" style="display:none">
+<select id="officeSelect"></select>
+<button onclick="sendSelectedInvoices()">إرسال</button>
+</div>
+</div>
+
+</div>
+
+<!-- Firebase -->
 <script type="module">
-
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-app.js";
-import {
-getFirestore,
-collection,
-addDoc,
-getDocs,
-query,
-where,
-onSnapshot
-} from "https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js";
+import { getDatabase, ref, push, onValue, update } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-database.js";
+import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-analytics.js";
 
 const firebaseConfig = {
-apiKey:"YOUR_KEY",
-authDomain:"YOUR_DOMAIN",
-projectId:"YOUR_PROJECT"
+  apiKey: "AIzaSyAT3GvhnBAbUykGXhy9O_RvHsO80UO2cYE",
+  authDomain: "man-7f10b.firebaseapp.com",
+  databaseURL: "https://man-7f10b-default-rtdb.firebaseio.com",
+  projectId: "man-7f10b",
+  storageBucket: "man-7f10b.firebasestorage.app",
+  messagingSenderId: "442792808025",
+  appId: "1:442792808025:web:f85f15a8d0652bd232eb48",
+  measurementId: "G-HM4MD6PYFP"
 };
 
 const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+const analytics = getAnalytics(app);
+const db = getDatabase(app);
 
-const ADMIN_PASSWORD="22623212262321";
-
-let currentUser="";
-let role="";
-
-/* ================= LOGIN ================= */
-
-window.adminLogin = async function(){
-
-let pass = adminPass.value.trim();
-
-if(pass === ADMIN_PASSWORD){
-
-role="admin";
-login.classList.add("hidden");
-dashboard.classList.remove("hidden");
-
-loadOffices();
-loadInvoices();
-listenChat();
-
-}else{
-alert("كلمة السر خطأ ❌");
+/* الواجهة */
+const sidebar = document.getElementById("sidebar");
+function toggleMenu(){ sidebar.classList.toggle("active") }
+function openSection(id){
+  document.querySelectorAll(".section").forEach(s=>s.classList.remove("active"))
+  document.getElementById(id).classList.add("active")
+  sidebar.classList.remove("active")
 }
 
+/* المكاتب */
+let offices = [];
+let currentOffice = null;
+
+function createOffice(){
+  let office = {
+    responsible: document.getElementById("responsible").value,
+    country: document.getElementById("country").value,
+    city: document.getElementById("city").value,
+    area: document.getElementById("area").value,
+    phone: document.getElementById("phone").value,
+    notifications: 0
+  };
+  const newRef = push(ref(db,'offices'), office);
+  alert("تم إنشاء المكتب وحفظه في Firebase");
+  document.getElementById("responsible").value = "";
+  document.getElementById("country").value = "";
+  document.getElementById("city").value = "";
+  document.getElementById("area").value = "";
+  document.getElementById("phone").value = "";
 }
 
-window.officeLogin = async function(){
-
-let name = officeName.value.trim();
-let pass = officeKey.value.trim();
-
-let q = query(collection(db,"offices"),where("name","==",name));
-let snap = await getDocs(q);
-
-if(snap.empty){
-alert("المكتب غير موجود");
-return;
-}
-
-let officeData = null;
-
-snap.forEach(d=>officeData=d.data());
-
-if(officeData.password === pass){
-
-role="office";
-currentUser=name;
-
-login.classList.add("hidden");
-dashboard.classList.remove("hidden");
-
-loadInvoices();
-
-}else{
-alert("كلمة السر خطأ");
-}
-
-}
-
-/* ================= SIDEBAR ================= */
-
-window.showSection=function(id){
-
-document.querySelectorAll(".section")
-.forEach(sec=>sec.classList.add("hidden"));
-
-document.getElementById(id).classList.remove("hidden");
-
-}
-
-window.logout=function(){
-location.reload();
-}
-
-/* ================= OFFICES ================= */
-
-window.createOffice = async function(){
-
-await addDoc(collection(db,"offices"),{
-name:newOfficeName.value,
-password:newOfficePass.value,
-country:country.value,
-region:region.value,
-status:"active"
+/* قراءة المكاتب من Firebase */
+onValue(ref(db,'offices'), snapshot=>{
+  offices = [];
+  snapshot.forEach(s=>{
+    offices.push({ key:s.key, ...s.val() });
+  });
+  renderOffices();
+  updateOfficeSelect();
 });
 
-alert("تم إنشاء المكتب");
-loadOffices();
-
+function renderOffices(){
+  let list = document.getElementById("officeList");
+  list.innerHTML = "";
+  offices.forEach((o,i)=>{
+    list.innerHTML+=`
+      <div class="office" onclick="openOffice('${o.key}')">
+        مكتب ${i+1}<br>
+        المسئول: ${o.responsible}
+        ${o.notifications>0?`<span style="color:red">(${o.notifications})</span>`:""}
+      </div>
+    `;
+  });
 }
 
-async function loadOffices(){
+function openOffice(key){
+  currentOffice = key;
+  const officeRef = ref(db,'offices/'+key);
+  update(officeRef,{notifications:0}); // إعادة تعيين الاشعارات
+  document.getElementById("officeTitle").innerText = "مكتب "+offices.find(o=>o.key===key).responsible;
+  const chatBox = document.getElementById("chatBox");
+  chatBox.innerHTML = "";
 
-let snap = await getDocs(collection(db,"offices"));
-officeList.innerHTML="";
+  // تحميل الرسائل من Firebase
+  const messagesRef = ref(db,'messages/'+key);
+  onValue(messagesRef, snapshot=>{
+    chatBox.innerHTML="";
+    snapshot.forEach(s=>{
+      chatBox.innerHTML+=`<div>${s.val().text}</div>`;
+    });
+    chatBox.scrollTop = chatBox.scrollHeight;
+  });
 
-snap.forEach(d=>{
-let data=d.data();
-
-officeList.innerHTML+=`
-<div>
-<b>${data.name}</b>
-| ${data.country}
-| ${data.region}
-</div>
-<hr>
-`;
-});
+  openSection("officeView");
 }
 
-/* ================= INVOICES ================= */
-
-window.createInvoice = async function(){
-
-let code="INV-"+Math.floor(Math.random()*999999);
-
-await addDoc(collection(db,"invoices"),{
-code,
-client:client.value,
-items:items.value,
-toOffice:toOffice.value,
-from:role,
-status:"pending",
-createdAt:new Date()
-});
-
-alert("تم إنشاء الفاتورة");
-loadInvoices();
-
+/* الرسائل */
+function sendMessage(){
+  const input = document.getElementById("chatInput");
+  const msg = input.value;
+  if(msg.trim()==="") return;
+  push(ref(db,'messages/'+currentOffice), { text:"🟢 "+msg });
+  input.value = "";
 }
 
-async function loadInvoices(){
+/* الفواتير */
+let invoices = [];
 
-let snap = await getDocs(collection(db,"invoices"));
-invoiceList.innerHTML="";
-
-snap.forEach(d=>{
-let data=d.data();
-
-invoiceList.innerHTML+=`
-<div>
-<b>${data.code}</b>
-| ${data.client}
-| ${data.status}
-</div>
-<hr>
-`;
-});
+function tracking(){
+  return "TRK-"+Math.floor(Math.random()*1000000);
 }
 
-/* ================= CHAT ================= */
-
-window.sendMessage = async function(){
-
-await addDoc(collection(db,"chat"),{
-sender:role,
-message:chatMsg.value,
-time:new Date()
-});
-
-chatMsg.value="";
+function createInvoice(){
+  const invoice = {
+    tracking: tracking(),
+    sender: document.getElementById("sender").value,
+    receiver: document.getElementById("receiver").value,
+    phone: document.getElementById("receiverPhone").value,
+    city: document.getElementById("cityReceiver").value,
+    address: document.getElementById("addressReceiver").value,
+    type: document.getElementById("shipmentType").value,
+    pieces: document.getElementById("pieces").value,
+    weight: document.getElementById("weight").value,
+    cost: document.getElementById("shippingCost").value,
+    cod: document.getElementById("codAmount").value
+  };
+  const newRef = push(ref(db,'invoices'), invoice);
+  alert("تم إنشاء الفاتورة وحفظها في Firebase");
+  renderInvoices();
 }
 
-function listenChat(){
-
-onSnapshot(collection(db,"chat"),snap=>{
-chatBox.innerHTML="";
-snap.forEach(d=>{
-let data=d.data();
-chatBox.innerHTML+=`
-<b>${data.sender}</b>:
-${data.message}
-<hr>
-`;
-});
+/* قراءة الفواتير */
+onValue(ref(db,'invoices'), snapshot=>{
+  invoices = [];
+  snapshot.forEach(s=>{
+    invoices.push({ key:s.key, ...s.val() });
+  });
+  renderInvoices();
 });
 
+function renderInvoices(){
+  const list = document.getElementById("invoiceList");
+  list.innerHTML = "";
+  invoices.forEach((inv,i)=>{
+    list.innerHTML+=`
+      <div class="invoiceItem">
+        <input type="checkbox" class="invCheck" value="${i}" onchange="toggleSendBox()">
+        رقم التتبع: ${inv.tracking}<br>
+        المستلم: ${inv.receiver}<br>
+        المدينة: ${inv.city}
+      </div>
+    `;
+  });
 }
 
+function toggleSendBox(){
+  const checks = document.querySelectorAll(".invCheck:checked");
+  document.getElementById("sendInvoicesBox").style.display = checks.length>0?"block":"none";
+}
+
+function updateOfficeSelect(){
+  const select = document.getElementById("officeSelect");
+  select.innerHTML = "";
+  offices.forEach(o=>{
+    select.innerHTML+=`<option value="${o.key}">${o.responsible}</option>`;
+  });
+}
+
+function sendSelectedInvoices(){
+  const officeKey = document.getElementById("officeSelect").value;
+  const checks = document.querySelectorAll(".invCheck:checked");
+  const chatBox = document.getElementById("chatBox");
+  checks.forEach(c=>{
+    const inv = invoices[c.value];
+    // إنشاء PDF
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    doc.text("فاتورة شحن",90,10);
+    doc.text("Tracking: "+inv.tracking,10,30);
+    doc.text("Sender: "+inv.sender,10,40);
+    doc.text("Receiver: "+inv.receiver,10,50);
+    doc.text("City: "+inv.city,10,60);
+    doc.text("Address: "+inv.address,10,70);
+    doc.text("Pieces: "+inv.pieces,10,80);
+    doc.text("Weight: "+inv.weight,10,90);
+    doc.text("Shipping Cost: "+inv.cost,10,100);
+    doc.text("COD: "+inv.cod,10,110);
+    const pdf = doc.output("datauristring");
+
+    // إرسال الفاتورة للمكتب
+    push(ref(db,'messages/'+officeKey), { text:"📄 فاتورة "+inv.tracking+" | رابط PDF", pdf });
+  });
+  alert("تم إرسال الفواتير");
+}
 </script>
 
 </body>
