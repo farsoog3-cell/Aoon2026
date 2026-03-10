@@ -232,35 +232,44 @@ window.updateOfficeField=function(key,field,value){ firebase.database().ref('off
 window.deleteOffice=function(key){ if(confirm("هل تريد حذف هذا المكتب؟")) firebase.database().ref('offices/'+key).remove(); }
 
 /* عرض مكتب + الدردشة */
-window.openOffice=function(key){
-  currentOffice=key;
+window.openOffice = function(key){
+  currentOffice = key;
   firebase.database().ref('offices/'+key).update({notifications:0});
   const office = offices.find(o=>o.key===key);
-  document.getElementById("officeTitle").innerText="مكتب "+office.responsible;
+  document.getElementById("officeTitle").innerText = "مكتب " + office.responsible;
   openSection("officeView");
-  const chatBox=document.getElementById("chatBox");
-  chatBox.innerHTML="";
-  firebase.database().ref('messages/'+key).on('value', snapshot=>{
-    chatBox.innerHTML="";
-    snapshot.forEach(s=>{
-      const msg = s.val();
-      const cls = msg.user?"user":"office";
-      const time = new Date(msg.timestamp||Date.now()).toLocaleString();
+
+  const chatBox = document.getElementById("chatBox");
+  chatBox.innerHTML = "";
+
+  // قراءة الرسائل من Firebase
+  firebase.database().ref('messages/'+key).on('value', snapshot => {
+    const msgs = [];
+    snapshot.forEach(s => { msgs.push(s.val()); });
+
+    // ترتيب حسب timestamp
+    msgs.sort((a,b) => (a.timestamp || 0) - (b.timestamp || 0));
+
+    chatBox.innerHTML = "";
+    msgs.forEach(msg => {
+      const cls = msg.user ? "user" : "office";
+      const time = new Date(msg.timestamp || Date.now()).toLocaleString();
       let textHTML = msg.text;
-      if(msg.pdf) textHTML+=` <a href="${msg.pdf}" target="_blank">تحميل PDF</a>`;
-      chatBox.innerHTML+=`<div class="message ${cls}">${textHTML}<span class="timestamp">${time}</span></div>`;
+      if(msg.pdf) textHTML += ` <a href="${msg.pdf}" target="_blank">تحميل PDF</a>`;
+      chatBox.innerHTML += `<div class="message ${cls}">${textHTML}<span class="timestamp">${time}</span></div>`;
     });
+
     chatBox.scrollTop = chatBox.scrollHeight;
   });
 }
 
-/* الرسائل */
-window.sendMessage=function(){
-  const input=document.getElementById("chatInput");
-  const msg=input.value;
-  if(msg.trim()==="") return;
-  firebase.database().ref('messages/'+currentOffice).push({text:"🟢 "+msg,user:true,timestamp:Date.now()});
-  input.value="";
+/* إرسال رسالة */
+window.sendMessage = function(){
+  const input = document.getElementById("chatInput");
+  const msg = input.value.trim();
+  if(!msg) return;
+  firebase.database().ref('messages/'+currentOffice).push({text: msg, user: true, timestamp: Date.now()});
+  input.value = "";
 }
 
 /* الفواتير */
