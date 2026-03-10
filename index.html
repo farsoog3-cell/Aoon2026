@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Zom Admin Final</title>
+<title id="siteTitle">Zom Admin</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;font-family:Arial}
@@ -35,12 +35,27 @@ th, td{border:1px solid #555;padding:8px;text-align:right;}
 th{background:#222;}
 .invoiceItem{background:#111;padding:10px;margin-top:10px;border-radius:6px;}
 .invoiceControls{margin-top:5px;}
+#loginBox{max-width:400px;margin:50px auto;padding:20px;background:#111;border-radius:10px;}
+#loginBox input,#loginBox select{width:100%;}
 </style>
 </head>
 <body>
 
-<header>
-<div class="logo"><span>Z</span>om</div>
+<!-- تسجيل الدخول -->
+<div id="loginBox" class="section active">
+<h2>تسجيل الدخول</h2>
+<select id="userType">
+<option value="admin">مدير لوحة التحكم</option>
+<option value="office">مكتب</option>
+</select>
+<input id="loginUser" placeholder="اسم المستخدم أو رقم الهاتف">
+<input id="loginPass" placeholder="كلمة السر" type="password">
+<button onclick="login()">دخول</button>
+<div id="loginMsg" style="color:red;margin-top:10px;"></div>
+</div>
+
+<header style="display:none;" id="mainHeader">
+<div class="logo"><span id="logoChar">Z</span><span id="logoText">om</span></div>
 <div style="display:flex;gap:15px">
 <div class="bell" onclick="openSection('offices')">🔔<span id="notificationCount">0</span></div>
 <div class="menu" onclick="toggleMenu()">☰</div>
@@ -51,11 +66,19 @@ th{background:#222;}
 
 <div class="sidebar" id="sidebar">
 <h2>لوحة التحكم</h2>
+<div id="adminMenu">
 <a onclick="openSection('createOffice')">إنشاء مكتب</a>
 <a onclick="openSection('offices')">المكاتب</a>
 <a onclick="openSection('manageOffices')">إدارة المكاتب</a>
 <a onclick="openSection('invoices')">الفواتير</a>
 <a onclick="openSection('searchInvoice')">البحث عن فاتورة</a>
+<a onclick="openSection('settings')">الإعدادات</a>
+</div>
+<div id="officeMenu">
+<a onclick="openSection('officeView')">مكتبك</a>
+<a onclick="openSection('invoices')">الفواتير</a>
+<a onclick="openSection('searchInvoice')">البحث عن فاتورة</a>
+</div>
 </div>
 
 <div class="content">
@@ -129,6 +152,15 @@ th{background:#222;}
 <div id="searchResult"></div>
 </div>
 
+<!-- الإعدادات -->
+<div id="settings" class="section">
+<h2>الإعدادات</h2>
+<input id="siteNameInput" placeholder="اسم الموقع">
+<input id="adminUserInput" placeholder="اسم المستخدم للإدمن">
+<input id="adminPassInput" placeholder="كلمة سر الإدمن" type="password">
+<button onclick="saveSettings()">حفظ الإعدادات</button>
+</div>
+
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-analytics-compat.js"></script>
@@ -149,6 +181,11 @@ firebase.initializeApp(firebaseConfig);
 firebase.analytics();
 const db = firebase.database();
 
+// Default admin credentials
+let adminUser = "fars";
+let adminPass = "2262321";
+let siteName = "Zom";
+
 // Sidebar
 const sidebar = document.getElementById("sidebar");
 const overlay = document.getElementById("overlay");
@@ -158,6 +195,43 @@ function openSection(id){
   document.querySelectorAll(".section").forEach(s=>s.classList.remove("active"));
   document.getElementById(id).classList.add("active");
   closeMenu();
+}
+
+// Login
+let currentUser = null;
+function login(){
+  const type=document.getElementById("userType").value;
+  const user=document.getElementById("loginUser").value.trim();
+  const pass=document.getElementById("loginPass").value.trim();
+  const msg=document.getElementById("loginMsg");
+  msg.innerText="";
+  if(type==="admin"){
+    if(user===adminUser && pass===adminPass){
+      currentUser="admin";
+      document.getElementById("loginBox").style.display="none";
+      document.getElementById("mainHeader").style.display="flex";
+      document.getElementById("adminMenu").style.display="block";
+      document.getElementById("officeMenu").style.display="none";
+      document.getElementById("siteTitle").innerText = siteName+" - لوحة التحكم";
+      openSection('offices');
+    } else { msg.innerText="اسم المستخدم أو كلمة السر خاطئة"; }
+  } else {
+    // مكتب
+    db.ref('offices').orderByChild('login/phone').equalTo(user).once('value',snap=>{
+      let found=null;
+      snap.forEach(s=>{ if(s.val().login.password===pass) found={key:s.key,...s.val()}; });
+      if(found){
+        currentUser={type:"office",key:found.key};
+        document.getElementById("loginBox").style.display="none";
+        document.getElementById("mainHeader").style.display="flex";
+        document.getElementById("adminMenu").style.display="none";
+        document.getElementById("officeMenu").style.display="block";
+        document.getElementById("siteTitle").innerText = siteName+" - مكتب "+found.responsible;
+        openSection('officeView');
+        openOffice(found.key);
+      } else { msg.innerText="رقم الهاتف أو كلمة السر خاطئة"; }
+    });
+  }
 }
 
 // MOC
@@ -236,6 +310,7 @@ function openOffice(key){
 
 // إرسال رسالة
 function sendMessage(){
+  if(!currentOffice) return;
   const msg=document.getElementById("chatInput").value.trim();
   if(!msg) return;
   db.ref('messages/'+currentOffice).push({text:msg,user:true,timestamp:Date.now()});
@@ -333,6 +408,16 @@ function searchInvoiceByTracking(){
 }
 function renderAllInvoicesInSearch(){ document.getElementById("searchTracking").value=""; searchInvoiceByTracking(); }
 
+// الإعدادات
+function saveSettings(){
+  siteName=document.getElementById("siteNameInput").value || siteName;
+  adminUser=document.getElementById("adminUserInput").value || adminUser;
+  adminPass=document.getElementById("adminPassInput").value || adminPass;
+  document.getElementById("siteTitle").innerText=siteName+" - لوحة التحكم";
+  document.getElementById("logoText").innerText=siteName;
+  document.getElementById("logoChar").innerText=siteName[0];
+  alert("تم حفظ الإعدادات");
+}
 </script>
 </body>
 </html>
