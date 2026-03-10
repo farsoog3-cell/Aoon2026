@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Zom Admin Stable</title>
+<title>Zom Admin Final</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;font-family:Arial}
@@ -53,11 +53,13 @@ th{background:#222;}
 <h2>لوحة التحكم</h2>
 <a onclick="openSection('createOffice')">إنشاء مكتب</a>
 <a onclick="openSection('offices')">المكاتب</a>
+<a onclick="openSection('manageOffices')">إدارة المكاتب</a>
 <a onclick="openSection('invoices')">الفواتير</a>
 <a onclick="openSection('searchInvoice')">البحث عن فاتورة</a>
 </div>
 
 <div class="content">
+
 <!-- إنشاء مكتب -->
 <div id="createOffice" class="section">
 <h2>إنشاء مكتب</h2>
@@ -75,6 +77,16 @@ th{background:#222;}
 <div id="offices" class="section">
 <h2>المكاتب</h2>
 <div id="officeList"></div>
+</div>
+
+<!-- إدارة المكاتب -->
+<div id="manageOffices" class="section">
+<h2>إدارة المكاتب</h2>
+<table id="manageOfficeTable">
+<tr>
+<th>#</th><th>المسئول</th><th>الدولة</th><th>المدينة</th><th>المنطقة</th><th>الهاتف</th><th>تعديل/حذف</th>
+</tr>
+</table>
 </div>
 
 <!-- عرض مكتب + الدردشة -->
@@ -102,6 +114,7 @@ th{background:#222;}
 <input id="weight" placeholder="الوزن">
 <input id="shippingCost" placeholder="تكلفة الشحن">
 <input id="codAmount" placeholder="COD">
+<select id="officeSelect"></select>
 <button onclick="createInvoice()">إنشاء الفاتورة</button>
 
 <h3>الفواتير</h3>
@@ -147,13 +160,16 @@ function openSection(id){
   closeMenu();
 }
 
-// المكاتب
+// MOC
 let offices=[],currentOffice=null,invoices=[];
 
 // إنشاء مكتب
 function createOffice(){
-  const office={ responsible:document.getElementById("responsible").value, country:document.getElementById("country").value,
-    city:document.getElementById("city").value, area:document.getElementById("area").value, phone:document.getElementById("phone").value,
+  const office={ responsible:document.getElementById("responsible").value,
+    country:document.getElementById("country").value,
+    city:document.getElementById("city").value,
+    area:document.getElementById("area").value,
+    phone:document.getElementById("phone").value,
     login:{phone:document.getElementById("officePhone").value,password:document.getElementById("officePassword").value} };
   db.ref('offices').push(office);
   alert("تم إنشاء المكتب");
@@ -163,7 +179,7 @@ function createOffice(){
 // قراءة المكاتب
 db.ref('offices').on('value',snap=>{
   offices=[]; snap.forEach(s=>offices.push({key:s.key,...s.val()}));
-  renderOffices();
+  renderOffices(); renderManageOffices(); updateOfficeSelect();
 });
 
 // عرض المكاتب
@@ -178,6 +194,25 @@ function renderOffices(){
   });
 }
 
+// إدارة المكاتب
+function renderManageOffices(){
+  const table=document.getElementById("manageOfficeTable");
+  table.querySelectorAll("tr:not(:first-child)").forEach(r=>r.remove());
+  offices.forEach((o,i)=>{
+    const tr=document.createElement("tr");
+    tr.innerHTML=`<td>${i+1}</td>
+      <td><input value="${o.responsible}" onchange="updateOfficeField('${o.key}','responsible',this.value)"></td>
+      <td><input value="${o.country}" onchange="updateOfficeField('${o.key}','country',this.value)"></td>
+      <td><input value="${o.city}" onchange="updateOfficeField('${o.key}','city',this.value)"></td>
+      <td><input value="${o.area}" onchange="updateOfficeField('${o.key}','area',this.value)"></td>
+      <td><input value="${o.phone}" onchange="updateOfficeField('${o.key}','phone',this.value)"></td>
+      <td><button onclick="deleteOffice('${o.key}')">حذف</button></td>`;
+    table.appendChild(tr);
+  });
+}
+function updateOfficeField(key,f,v){ db.ref('offices/'+key+'/'+f).set(v); }
+function deleteOffice(key){ if(confirm("هل تريد حذف هذا المكتب؟")) db.ref('offices/'+key).remove(); }
+
 // فتح مكتب + الدردشة
 function openOffice(key){
   currentOffice=key;
@@ -191,7 +226,9 @@ function openOffice(key){
       const msg=s.val();
       const cls=msg.user?"user":"office";
       const time=new Date(msg.timestamp).toLocaleString();
-      chatBox.innerHTML+=`<div class="message ${cls}">${msg.text}<div class="timestamp">${time}</div></div>`;
+      let text=msg.text;
+      if(msg.pdf) text+=` <a href="${msg.pdf}" target="_blank">تحميل PDF</a>`;
+      chatBox.innerHTML+=`<div class="message ${cls}">${text}<div class="timestamp">${time}</div></div>`;
     });
     chatBox.scrollTop=chatBox.scrollHeight;
   });
@@ -208,18 +245,41 @@ function sendMessage(){
 // الفواتير
 function tracking(){return "TRK-"+Math.floor(Math.random()*1000000);}
 function createInvoice(){
-  const inv={tracking:tracking(),sender:document.getElementById("sender").value,receiver:document.getElementById("receiver").value,
-    phone:document.getElementById("receiverPhone").value,city:document.getElementById("cityReceiver").value,address:document.getElementById("addressReceiver").value,
-    type:document.getElementById("shipmentType").value,pieces:document.getElementById("pieces").value,weight:document.getElementById("weight").value,
-    cost:document.getElementById("shippingCost").value,cod:document.getElementById("codAmount").value,timestamp:Date.now() };
-  db.ref('invoices').push(inv);
-  alert("تم إنشاء الفاتورة");
+  const officeKey=document.getElementById("officeSelect").value;
+  const inv={tracking:tracking(),sender:document.getElementById("sender").value,
+    receiver:document.getElementById("receiver").value,phone:document.getElementById("receiverPhone").value,
+    city:document.getElementById("cityReceiver").value,address:document.getElementById("addressReceiver").value,
+    type:document.getElementById("shipmentType").value,pieces:document.getElementById("pieces").value,
+    weight:document.getElementById("weight").value,cost:document.getElementById("shippingCost").value,
+    cod:document.getElementById("codAmount").value,timestamp:Date.now()};
+  const newRef=db.ref('invoices').push();
+  newRef.set(inv);
+  // إنشاء PDF وإرساله للدردشة
+  const { jsPDF } = window.jspdf;
+  const doc=new jsPDF();
+  doc.text("فاتورة شحن",90,10);
+  doc.text("Tracking: "+inv.tracking,10,30);
+  doc.text("Sender: "+inv.sender,10,40);
+  doc.text("Receiver: "+inv.receiver,10,50);
+  doc.text("City: "+inv.city,10,60);
+  doc.text("Address: "+inv.address,10,70);
+  doc.text("Pieces: "+inv.pieces,10,80);
+  doc.text("Weight: "+inv.weight,10,90);
+  doc.text("Shipping Cost: "+inv.cost,10,100);
+  doc.text("COD: "+inv.cod,10,110);
+  const pdf=doc.output("datauristring");
+  db.ref('messages/'+officeKey).push({text:"📄 فاتورة "+inv.tracking,pdf,timestamp:Date.now()});
+  alert("تم إنشاء الفاتورة وإرسالها للمكتب المحدد");
   document.querySelectorAll("#invoices input").forEach(i=>i.value="");
 }
 
-// قراءة وعرض الفواتير
+// قراءة الفواتير
 db.ref('invoices').on('value',snap=>{
   invoices=[]; snap.forEach(s=>invoices.push({key:s.key,...s.val()}));
+  renderInvoices(); renderAllInvoicesInSearch();
+});
+
+function renderInvoices(){
   const list=document.getElementById("invoiceList"); list.innerHTML="";
   invoices.forEach(inv=>{
     list.innerHTML+=`<div class="invoiceItem">
@@ -230,7 +290,12 @@ db.ref('invoices').on('value',snap=>{
       </div>
     </div>`;
   });
-});
+}
+
+function updateOfficeSelect(){
+  const select=document.getElementById("officeSelect"); select.innerHTML="";
+  offices.forEach(o=>{select.innerHTML+=`<option value="${o.key}">${o.responsible}</option>`});
+}
 
 // تعديل وحذف الفواتير
 function deleteInvoice(key){ if(confirm("هل تريد حذف الفاتورة؟")) db.ref('invoices/'+key).remove(); }
@@ -259,9 +324,15 @@ function searchInvoiceByTracking(){
     const date=new Date(inv.timestamp).toLocaleString();
     resultDiv.innerHTML+=`<div class="invoiceItem">
       رقم التتبع: ${inv.tracking}<br>المرسل: ${inv.sender}<br>المستلم: ${inv.receiver}<br>المدينة: ${inv.city}<br>العنوان: ${inv.address}<br>النوع: ${inv.type}<br>القطع: ${inv.pieces}<br>الوزن: ${inv.weight}<br>تكلفة الشحن: ${inv.cost}<br>COD: ${inv.cod}<br>التاريخ: ${date}
+      <div class="invoiceControls">
+        <button onclick="editInvoice('${inv.key}')">تعديل</button>
+        <button onclick="deleteInvoice('${inv.key}')">حذف</button>
+      </div>
     </div>`;
   });
 }
+function renderAllInvoicesInSearch(){ document.getElementById("searchTracking").value=""; searchInvoiceByTracking(); }
+
 </script>
 </body>
 </html>
