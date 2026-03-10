@@ -34,6 +34,7 @@ input, select, textarea{padding:8px;margin:5px 0;border-radius:6px;border:none;w
 table{width:100%;border-collapse:collapse;margin-top:10px;}
 th, td{border:1px solid #555;padding:8px;text-align:right;}
 th{background:#222;}
+.invoiceItem{background:#111;padding:10px;margin-top:10px;border-radius:6px;}
 </style>
 </head>
 <body>
@@ -157,6 +158,7 @@ function openSection(id){
   document.querySelectorAll(".section").forEach(s=>s.classList.remove("active"))
   document.getElementById(id).classList.add("active")
   sidebar.classList.remove("active")
+  if(id==='searchInvoice'){ renderAllInvoicesInSearch(); }
 }
 
 /* المكاتب */
@@ -197,17 +199,16 @@ function renderOffices(){
   const list = document.getElementById("officeList");
   list.innerHTML="";
   offices.forEach((o,i)=>{
-    list.innerHTML+=`<div class="office" onclick="openOffice('${o.key}')">
-      مكتب ${i+1}<br>
-      المسئول: ${o.responsible}
-      ${o.notifications>0?`<span style="color:red">(${o.notifications})</span>`:""}
-    </div>`;
+    const div = document.createElement("div");
+    div.className = "office";
+    div.innerHTML = `مكتب ${i+1}<br>المسئول: ${o.responsible}${o.notifications>0?`<span style="color:red">(${o.notifications})</span>`:""}`;
+    div.addEventListener("click",()=>{ window.openOffice(o.key); });
+    list.appendChild(div);
   });
 }
 
 function renderManageOffices(){
   const table = document.getElementById("manageOfficeTable");
-  // حذف الصفوف القديمة ماعدا العنوان
   table.querySelectorAll("tr:not(:first-child)").forEach(r=>r.remove());
   offices.forEach((o,i)=>{
     table.innerHTML+=`<tr>
@@ -351,8 +352,8 @@ window.searchInvoiceByTracking = function(){
   const trk = document.getElementById("searchTracking").value.trim();
   const resultDiv = document.getElementById("searchResult");
   resultDiv.innerHTML = "";
-  if(!trk) return;
-  const found = invoices.filter(inv=>inv.tracking === trk);
+  let found = invoices;
+  if(trk) found = invoices.filter(inv=>inv.tracking === trk);
   if(found.length===0){ resultDiv.innerHTML="لا توجد فاتورة بهذا الرقم"; return; }
   found.forEach(inv=>{
     const date = new Date(inv.timestamp).toLocaleString();
@@ -370,6 +371,12 @@ window.searchInvoiceByTracking = function(){
       التاريخ: ${date}
     </div>`;
   });
+}
+
+/* عرض كل الفواتير تلقائيًا في البحث */
+function renderAllInvoicesInSearch(){
+  document.getElementById("searchTracking").value = "";
+  window.searchInvoiceByTracking();
 }
 </script>
 </body>
