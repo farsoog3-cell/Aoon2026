@@ -16,7 +16,7 @@ header{height:65px;display:flex;align-items:center;justify-content:space-between
 .menu{font-size:22px;cursor:pointer;}
 .bell{position:relative;cursor:pointer;font-size:20px;}
 .bell span{position:absolute;top:-6px;right:-10px;background:red;border-radius:50%;font-size:12px;padding:2px 6px;display:none;}
-.sidebar{position:fixed;top:0;right:-260px;width:260px;height:100%;background:#111;padding:25px;transition:0.3s;}
+.sidebar{position:fixed;top:0;right:-300px;width:300px;height:100%;background:#111;padding:25px;transition:0.3s;overflow-y:auto;}
 .sidebar.active{right:0;}
 .sidebar a{display:block;padding:12px 0;border-bottom:1px solid rgba(255,255,255,0.05);cursor:pointer;}
 .content{padding:30px;}
@@ -24,15 +24,18 @@ header{height:65px;display:flex;align-items:center;justify-content:space-between
 .section.active{display:block;}
 .office{background:#111;padding:15px;margin-top:10px;border-radius:8px;cursor:pointer;}
 .chatContainer{display:flex;flex-direction:column;height:60vh;border:1px solid rgba(255,255,255,0.1);padding:10px;background:#111;}
-.chat{flex:1;overflow:auto;margin-bottom:5px;}
-.chatControls{display:flex;gap:5px;}
-.chatControls input{flex:1;padding:8px;}
+.chat{flex:1;overflow:auto;margin-bottom:5px;display:flex;flex-direction:column;gap:5px;}
+.message{max-width:70%;padding:8px 12px;border-radius:10px;word-break:break-word;position:relative;}
+.message.user{align-self:flex-end;background:#00ff88;color:black;}
+.message.office{align-self:flex-start;background:#222;color:white;}
+.timestamp{font-size:10px;color:gray;position:absolute;bottom:-15px;right:5px;}
 button{padding:8px 12px;border:none;background:#00ff88;border-radius:6px;cursor:pointer;}
-input{padding:8px;margin:5px;border-radius:6px;border:none;}
-.invoiceItem{background:#111;padding:10px;margin-top:10px;border-radius:6px;}
+input, select, textarea{padding:8px;margin:5px 0;border-radius:6px;border:none;width:100%;box-sizing:border-box;background:#222;color:white;}
+table{width:100%;border-collapse:collapse;margin-top:10px;}
+th, td{border:1px solid #555;padding:8px;text-align:right;}
+th{background:#222;}
 </style>
 </head>
-
 <body>
 
 <header>
@@ -47,7 +50,9 @@ input{padding:8px;margin:5px;border-radius:6px;border:none;}
 <h2>لوحة التحكم</h2>
 <a onclick="openSection('createOffice')">إنشاء مكتب</a>
 <a onclick="openSection('offices')">المكاتب</a>
+<a onclick="openSection('manageOffices')">إدارة المكاتب</a>
 <a onclick="openSection('invoices')">الفواتير</a>
+<a onclick="openSection('searchInvoice')">البحث عن فاتورة</a>
 </div>
 
 <div class="content">
@@ -55,21 +60,31 @@ input{padding:8px;margin:5px;border-radius:6px;border:none;}
 <!-- إنشاء مكتب -->
 <div id="createOffice" class="section">
 <h2>إنشاء مكتب</h2>
-<input id="responsible" placeholder="اسم المسئول"><br>
-<input id="country" placeholder="الدولة"><br>
-<input id="city" placeholder="المدينة"><br>
-<input id="area" placeholder="المنطقة"><br>
-<input id="phone" placeholder="الهاتف"><br>
+<input id="responsible" placeholder="اسم المسئول">
+<input id="country" placeholder="الدولة">
+<input id="city" placeholder="المدينة">
+<input id="area" placeholder="المنطقة">
+<input id="phone" placeholder="الهاتف">
 <button onclick="createOffice()">إنشاء</button>
 </div>
 
-<!-- المكاتب -->
+<!-- عرض المكاتب -->
 <div id="offices" class="section">
 <h2>المكاتب</h2>
 <div id="officeList"></div>
 </div>
 
-<!-- عرض مكتب -->
+<!-- إدارة المكاتب -->
+<div id="manageOffices" class="section">
+<h2>إدارة المكاتب</h2>
+<table id="manageOfficeTable">
+<tr>
+<th>#</th><th>المسئول</th><th>الدولة</th><th>المدينة</th><th>المنطقة</th><th>الهاتف</th><th>تعديل</th>
+</tr>
+</table>
+</div>
+
+<!-- عرض مكتب + الدردشة -->
 <div id="officeView" class="section">
 <h2 id="officeTitle"></h2>
 <div class="chatContainer">
@@ -84,16 +99,16 @@ input{padding:8px;margin:5px;border-radius:6px;border:none;}
 <!-- الفواتير -->
 <div id="invoices" class="section">
 <h2>إنشاء فاتورة شحن</h2>
-<input id="sender" placeholder="اسم المرسل"><br>
-<input id="receiver" placeholder="اسم المستلم"><br>
-<input id="receiverPhone" placeholder="هاتف المستلم"><br>
-<input id="cityReceiver" placeholder="مدينة المستلم"><br>
-<input id="addressReceiver" placeholder="العنوان"><br>
-<input id="shipmentType" placeholder="نوع الشحنة"><br>
-<input id="pieces" placeholder="عدد القطع"><br>
-<input id="weight" placeholder="الوزن"><br>
-<input id="shippingCost" placeholder="تكلفة الشحن"><br>
-<input id="codAmount" placeholder="COD"><br>
+<input id="sender" placeholder="اسم المرسل">
+<input id="receiver" placeholder="اسم المستلم">
+<input id="receiverPhone" placeholder="هاتف المستلم">
+<input id="cityReceiver" placeholder="مدينة المستلم">
+<input id="addressReceiver" placeholder="العنوان">
+<input id="shipmentType" placeholder="نوع الشحنة">
+<input id="pieces" placeholder="عدد القطع">
+<input id="weight" placeholder="الوزن">
+<input id="shippingCost" placeholder="تكلفة الشحن">
+<input id="codAmount" placeholder="COD">
 <button onclick="createInvoice()">إنشاء الفاتورة</button>
 
 <h3>الفواتير</h3>
@@ -103,6 +118,14 @@ input{padding:8px;margin:5px;border-radius:6px;border:none;}
 <select id="officeSelect"></select>
 <button onclick="sendSelectedInvoices()">إرسال</button>
 </div>
+</div>
+
+<!-- البحث عن فاتورة -->
+<div id="searchInvoice" class="section">
+<h2>بحث عن فاتورة</h2>
+<input id="searchTracking" placeholder="أدخل رقم الفاتورة">
+<button onclick="searchInvoiceByTracking()">بحث</button>
+<div id="searchResult"></div>
 </div>
 
 </div>
@@ -123,7 +146,6 @@ const firebaseConfig = {
   appId: "1:442792808025:web:f85f15a8d0652bd232eb48",
   measurementId: "G-HM4MD6PYFP"
 };
-
 firebase.initializeApp(firebaseConfig);
 firebase.analytics();
 const db = firebase.database();
@@ -140,6 +162,7 @@ function openSection(id){
 /* المكاتب */
 let offices = [];
 let currentOffice = null;
+let invoices = [];
 
 window.createOffice = function(){
   const office = {
@@ -148,15 +171,15 @@ window.createOffice = function(){
     city: document.getElementById("city").value,
     area: document.getElementById("area").value,
     phone: document.getElementById("phone").value,
-    notifications: 0
+    notifications:0
   };
   firebase.database().ref('offices').push(office);
   alert("تم إنشاء المكتب وحفظه في Firebase");
-  document.getElementById("responsible").value = "";
-  document.getElementById("country").value = "";
-  document.getElementById("city").value = "";
-  document.getElementById("area").value = "";
-  document.getElementById("phone").value = "";
+  document.getElementById("responsible").value="";
+  document.getElementById("country").value="";
+  document.getElementById("city").value="";
+  document.getElementById("area").value="";
+  document.getElementById("phone").value="";
 }
 
 /* قراءة المكاتب */
@@ -166,23 +189,50 @@ firebase.database().ref('offices').on('value', snapshot=>{
     offices.push({ key:s.key, ...s.val() });
   });
   renderOffices();
+  renderManageOffices();
   updateOfficeSelect();
 });
 
 function renderOffices(){
   const list = document.getElementById("officeList");
-  list.innerHTML = "";
+  list.innerHTML="";
   offices.forEach((o,i)=>{
-    list.innerHTML+=`
-      <div class="office" onclick="openOffice('${o.key}')">
-        مكتب ${i+1}<br>
-        المسئول: ${o.responsible}
-        ${o.notifications>0?`<span style="color:red">(${o.notifications})</span>`:""}
-      </div>
-    `;
+    list.innerHTML+=`<div class="office" onclick="openOffice('${o.key}')">
+      مكتب ${i+1}<br>
+      المسئول: ${o.responsible}
+      ${o.notifications>0?`<span style="color:red">(${o.notifications})</span>`:""}
+    </div>`;
   });
 }
 
+function renderManageOffices(){
+  const table = document.getElementById("manageOfficeTable");
+  // حذف الصفوف القديمة ماعدا العنوان
+  table.querySelectorAll("tr:not(:first-child)").forEach(r=>r.remove());
+  offices.forEach((o,i)=>{
+    table.innerHTML+=`<tr>
+      <td>${i+1}</td>
+      <td><input value="${o.responsible}" onchange="updateOfficeField('${o.key}','responsible',this.value)"></td>
+      <td><input value="${o.country}" onchange="updateOfficeField('${o.key}','country',this.value)"></td>
+      <td><input value="${o.city}" onchange="updateOfficeField('${o.key}','city',this.value)"></td>
+      <td><input value="${o.area}" onchange="updateOfficeField('${o.key}','area',this.value)"></td>
+      <td><input value="${o.phone}" onchange="updateOfficeField('${o.key}','phone',this.value)"></td>
+      <td><button onclick="deleteOffice('${o.key}')">حذف</button></td>
+    </tr>`;
+  });
+}
+
+window.updateOfficeField = function(key,field,value){
+  firebase.database().ref('offices/'+key+'/'+field).set(value);
+}
+
+window.deleteOffice = function(key){
+  if(confirm("هل تريد حذف هذا المكتب؟")){
+    firebase.database().ref('offices/'+key).remove();
+  }
+}
+
+/* عرض مكتب + الدردشة */
 window.openOffice = function(key){
   currentOffice = key;
   firebase.database().ref('offices/'+key).update({notifications:0});
@@ -192,14 +242,17 @@ window.openOffice = function(key){
   chatBox.innerHTML = "";
 
   firebase.database().ref('messages/'+key).on('value', snapshot=>{
-    chatBox.innerHTML = "";
+    chatBox.innerHTML="";
     snapshot.forEach(s=>{
-      chatBox.innerHTML += `<div>${s.val().text}</div>`;
+      const msg = s.val();
+      const cls = msg.user?"user":"office";
+      const time = new Date(msg.timestamp||Date.now()).toLocaleString();
+      let textHTML = msg.text;
+      if(msg.pdf) textHTML += ` <a href="${msg.pdf}" target="_blank">تحميل PDF</a>`;
+      chatBox.innerHTML += `<div class="message ${cls}">${textHTML}<span class="timestamp">${time}</span></div>`;
     });
     chatBox.scrollTop = chatBox.scrollHeight;
   });
-
-  openSection("officeView");
 }
 
 /* الرسائل */
@@ -207,16 +260,12 @@ window.sendMessage = function(){
   const input = document.getElementById("chatInput");
   const msg = input.value;
   if(msg.trim()==="") return;
-  firebase.database().ref('messages/'+currentOffice).push({ text:"🟢 "+msg });
-  input.value = "";
+  firebase.database().ref('messages/'+currentOffice).push({ text:"🟢 "+msg, user:true, timestamp:Date.now() });
+  input.value="";
 }
 
 /* الفواتير */
-let invoices = [];
-
-function tracking(){
-  return "TRK-"+Math.floor(Math.random()*1000000);
-}
+function tracking(){ return "TRK-"+Math.floor(Math.random()*1000000); }
 
 window.createInvoice = function(){
   const invoice = {
@@ -230,7 +279,8 @@ window.createInvoice = function(){
     pieces: document.getElementById("pieces").value,
     weight: document.getElementById("weight").value,
     cost: document.getElementById("shippingCost").value,
-    cod: document.getElementById("codAmount").value
+    cod: document.getElementById("codAmount").value,
+    timestamp: Date.now()
   };
   firebase.database().ref('invoices').push(invoice);
   alert("تم إنشاء الفاتورة وحفظها في Firebase");
@@ -247,7 +297,7 @@ firebase.database().ref('invoices').on('value', snapshot=>{
 
 function renderInvoices(){
   const list = document.getElementById("invoiceList");
-  list.innerHTML = "";
+  list.innerHTML="";
   invoices.forEach((inv,i)=>{
     list.innerHTML+=`
       <div class="invoiceItem">
@@ -255,8 +305,7 @@ function renderInvoices(){
         رقم التتبع: ${inv.tracking}<br>
         المستلم: ${inv.receiver}<br>
         المدينة: ${inv.city}
-      </div>
-    `;
+      </div>`;
   });
 }
 
@@ -267,7 +316,7 @@ window.toggleSendBox = function(){
 
 function updateOfficeSelect(){
   const select = document.getElementById("officeSelect");
-  select.innerHTML = "";
+  select.innerHTML="";
   offices.forEach(o=>{
     select.innerHTML+=`<option value="${o.key}">${o.responsible}</option>`;
   });
@@ -276,7 +325,6 @@ function updateOfficeSelect(){
 window.sendSelectedInvoices = function(){
   const officeKey = document.getElementById("officeSelect").value;
   const checks = document.querySelectorAll(".invCheck:checked");
-  const chatBox = document.getElementById("chatBox");
   checks.forEach(c=>{
     const inv = invoices[c.value];
     const { jsPDF } = window.jspdf;
@@ -293,11 +341,36 @@ window.sendSelectedInvoices = function(){
     doc.text("COD: "+inv.cod,10,110);
     const pdf = doc.output("datauristring");
 
-    firebase.database().ref('messages/'+officeKey).push({ text:"📄 فاتورة "+inv.tracking+" | رابط PDF", pdf });
+    firebase.database().ref('messages/'+officeKey).push({ text:"📄 فاتورة "+inv.tracking, pdf, timestamp:Date.now() });
   });
   alert("تم إرسال الفواتير");
 }
-</script>
 
+/* البحث عن الفاتورة */
+window.searchInvoiceByTracking = function(){
+  const trk = document.getElementById("searchTracking").value.trim();
+  const resultDiv = document.getElementById("searchResult");
+  resultDiv.innerHTML = "";
+  if(!trk) return;
+  const found = invoices.filter(inv=>inv.tracking === trk);
+  if(found.length===0){ resultDiv.innerHTML="لا توجد فاتورة بهذا الرقم"; return; }
+  found.forEach(inv=>{
+    const date = new Date(inv.timestamp).toLocaleString();
+    resultDiv.innerHTML += `<div class="invoiceItem">
+      رقم التتبع: ${inv.tracking}<br>
+      المرسل: ${inv.sender}<br>
+      المستلم: ${inv.receiver}<br>
+      المدينة: ${inv.city}<br>
+      العنوان: ${inv.address}<br>
+      النوع: ${inv.type}<br>
+      القطع: ${inv.pieces}<br>
+      الوزن: ${inv.weight}<br>
+      تكلفة الشحن: ${inv.cost}<br>
+      COD: ${inv.cod}<br>
+      التاريخ: ${date}
+    </div>`;
+  });
+}
+</script>
 </body>
 </html>
