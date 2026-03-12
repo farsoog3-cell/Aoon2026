@@ -1,442 +1,203 @@
 <!DOCTYPE html>
-<html lang="ar">
+<html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title id="siteTitle">Zom Admin</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<title>منصة تطوير الأنظمة</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap" rel="stylesheet">
+
 <style>
-*{margin:0;padding:0;box-sizing:border-box;font-family:Arial}
-body{background:#0b0b0b;color:white;position:relative;}
-header{height:65px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;border-bottom:1px solid rgba(255,255,255,0.05);}
-.logo{font-size:24px;font-weight:bold;}
-.logo span{color:#00ff88;font-size:30px;}
-.menu{font-size:22px;cursor:pointer;}
-.bell{position:relative;cursor:pointer;font-size:20px;}
-.bell span{position:absolute;top:-6px;right:-10px;background:red;border-radius:50%;font-size:12px;padding:2px 6px;display:none;}
-.sidebar{position:fixed;top:0;right:-300px;width:300px;height:100%;background:#111;padding:25px;transition:0.3s;overflow-y:auto;z-index:1001;}
-.sidebar.active{right:0;}
-.sidebar a{display:block;padding:12px 0;border-bottom:1px solid rgba(255,255,255,0.05);cursor:pointer;}
-.overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:none;z-index:1000;}
-.content{padding:30px;}
-.section{display:none;}
-.section.active{display:block;}
-.office{background:#111;padding:15px;margin-top:10px;border-radius:8px;cursor:pointer;}
-.chatContainer{display:flex;flex-direction:column;height:60vh;border:1px solid rgba(255,255,255,0.1);padding:10px;background:#111;}
-.chat{flex:1;overflow:auto;margin-bottom:5px;display:flex;flex-direction:column;gap:10px;}
-.message{max-width:70%;padding:8px 12px;border-radius:10px;word-break:break-word;position:relative;}
-.message.user{align-self:flex-end;background:#00ff88;color:black;}
-.message.office{align-self:flex-start;background:#222;color:white;}
-.timestamp{font-size:10px;color:gray;margin-top:2px;text-align:right;}
-button{padding:8px 12px;border:none;background:#00ff88;border-radius:6px;cursor:pointer;}
-input, select, textarea{padding:8px;margin:5px 0;border-radius:6px;border:none;width:100%;box-sizing:border-box;background:#222;color:white;}
-table{width:100%;border-collapse:collapse;margin-top:10px;}
-th, td{border:1px solid #555;padding:8px;text-align:right;}
-th{background:#222;}
-.invoiceItem{background:#111;padding:10px;margin-top:10px;border-radius:6px;}
-.invoiceControls{margin-top:5px;}
-#loginBox{max-width:400px;margin:50px auto;padding:20px;background:#111;border-radius:10px;}
-#loginBox input,#loginBox select{width:100%;}
+*{box-sizing:border-box}
+
+body{
+margin:0;
+font-family:'Cairo',sans-serif;
+background:radial-gradient(circle at top,#0a0220,#02010a 60%);
+color:white;
+overflow-x:hidden;
+}
+
+.hero{
+text-align:center;
+padding:100px 20px 60px;
+}
+
+.hero h1{
+font-size:48px;
+background:linear-gradient(90deg,#00c6ff,#a855f7);
+-webkit-background-clip:text;
+-webkit-text-fill-color:transparent;
+margin-bottom:10px;
+}
+
+.hero p{
+opacity:.8;
+font-size:18px;
+}
+
+.frame{
+max-width:1200px;
+margin:40px auto;
+padding:40px;
+border-radius:20px;
+position:relative;
+background:rgba(10,10,30,.6);
+border:1px solid rgba(168,85,247,.4);
+box-shadow:0 0 25px rgba(168,85,247,.6),
+0 0 60px rgba(0,198,255,.2);
+}
+
+.frame::before{
+content:"";
+position:absolute;
+inset:-2px;
+border-radius:20px;
+padding:2px;
+background:linear-gradient(135deg,#00c6ff,#a855f7,#00c6ff);
+-webkit-mask:
+linear-gradient(#000 0 0) content-box,
+linear-gradient(#000 0 0);
+-webkit-mask-composite:xor;
+mask-composite:exclude;
+}
+
+.services{
+display:grid;
+grid-template-columns:repeat(auto-fit,minmax(250px,1fr));
+gap:25px;
+margin-top:30px;
+}
+
+.card{
+background:rgba(20,20,50,.7);
+padding:25px;
+border-radius:14px;
+transition:.35s;
+border:1px solid rgba(255,255,255,.08);
+position:relative;
+}
+
+.card:hover{
+transform:translateY(-8px) scale(1.02);
+box-shadow:0 0 20px #a855f7,0 0 40px rgba(0,198,255,.4);
+}
+
+.card h3{
+margin-top:0;
+font-size:22px;
+color:#00c6ff;
+}
+
+.card p{
+font-size:15px;
+line-height:1.7;
+opacity:.9;
+}
+
+.badge{
+position:absolute;
+top:15px;
+left:15px;
+background:linear-gradient(90deg,#00c6ff,#a855f7);
+padding:5px 12px;
+border-radius:20px;
+font-size:12px;
+}
+
+.contact{
+position:fixed;
+bottom:25px;
+left:25px;
+}
+
+.contact a{
+background:linear-gradient(90deg,#00c6ff,#a855f7);
+color:white;
+padding:16px 30px;
+border-radius:50px;
+text-decoration:none;
+font-size:18px;
+box-shadow:0 0 20px rgba(168,85,247,.9);
+transition:.3s;
+}
+
+.contact a:hover{
+transform:scale(1.08);
+box-shadow:0 0 30px #00c6ff,0 0 60px #a855f7;
+}
+
+footer{
+text-align:center;
+padding:35px;
+margin-top:60px;
+opacity:.7;
+font-size:14px;
+}
+
+.logo{
+font-size:70px;
+font-weight:700;
+margin-bottom:20px;
+background:linear-gradient(90deg,#00c6ff,#a855f7);
+-webkit-background-clip:text;
+-webkit-text-fill-color:transparent;
+}
+
 </style>
 </head>
+
 <body>
 
-<!-- تسجيل الدخول -->
-<div id="loginBox" class="section active">
-<h2>تسجيل الدخول</h2>
-<select id="userType">
-<option value="admin">مدير لوحة التحكم</option>
-<option value="office">مكتب</option>
-</select>
-<input id="loginUser" placeholder="اسم المستخدم أو رقم الهاتف">
-<input id="loginPass" placeholder="كلمة السر" type="password">
-<button onclick="login()">دخول</button>
-<div id="loginMsg" style="color:red;margin-top:10px;"></div>
+<div class="hero">
+<div class="logo">CV</div>
+<h1>شركة تطوير الأنظمة الرقمية</h1>
+<p>نصمم أنظمة قوية واحترافية للشركات والمنصات الرقمية</p>
 </div>
 
-<header style="display:none;" id="mainHeader">
-<div class="logo"><span id="logoChar">Z</span><span id="logoText">om</span></div>
-<div style="display:flex;gap:15px">
-<div class="bell" onclick="openSection('offices')">🔔<span id="notificationCount">0</span></div>
-<div class="menu" onclick="toggleMenu()">☰</div>
-</div>
-</header>
+<div class="frame">
 
-<div class="overlay" id="overlay" onclick="closeMenu()"></div>
+<div class="services">
 
-<div class="sidebar" id="sidebar">
-<h2>لوحة التحكم</h2>
-<div id="adminMenu">
-<a onclick="openSection('createOffice')">إنشاء مكتب</a>
-<a onclick="openSection('offices')">المكاتب</a>
-<a onclick="openSection('manageOffices')">إدارة المكاتب</a>
-<a onclick="openSection('invoices')">الفواتير</a>
-<a onclick="openSection('searchInvoice')">البحث عن فاتورة</a>
-<a onclick="openSection('settings')">الإعدادات</a>
-</div>
-<div id="officeMenu">
-<a onclick="openSection('officeView')">مكتبك</a>
-<a onclick="openSection('invoices')">الفواتير</a>
-<a onclick="openSection('searchInvoice')">البحث عن فاتورة</a>
-</div>
+<div class="card">
+<span class="badge">الأقوى</span>
+<h3>نظام شركات الشحن</h3>
+<p>
+نظام احترافي لإدارة شركات الشحن يتضمن تتبع الشحنات ولوحة تحكم للمدير التنفيذي وإدارة الموظفين والصلاحيات.
+</p>
 </div>
 
-<div class="content">
-
-<!-- إنشاء مكتب -->
-<div id="createOffice" class="section">
-<h2>إنشاء مكتب</h2>
-<input id="responsible" placeholder="اسم المسئول">
-<input id="country" placeholder="الدولة">
-<input id="city" placeholder="المدينة">
-<input id="area" placeholder="المنطقة">
-<input id="phone" placeholder="الهاتف">
-<input id="officePhone" placeholder="رقم تسجيل المكتب">
-<input id="officePassword" placeholder="كلمة السر" type="password">
-<button onclick="createOffice()">إنشاء</button>
+<div class="card">
+<h3>إنشاء موقع ويب احترافي</h3>
+<p>
+تصميم وتطوير مواقع ويب حديثة وسريعة تعكس قوة شركتك وهويتك الرقمية.
+</p>
 </div>
 
-<!-- المكاتب -->
-<div id="offices" class="section">
-<h2>المكاتب</h2>
-<div id="officeList"></div>
+<div class="card">
+<h3>موقع دردشة نصية</h3>
+<p>
+إنشاء منصة دردشة نصية فورية تسمح للمستخدمين بالتواصل داخل الموقع بسهولة.
+</p>
 </div>
 
-<!-- إدارة المكاتب -->
-<div id="manageOffices" class="section">
-<h2>إدارة المكاتب</h2>
-<table id="manageOfficeTable">
-<tr>
-<th>#</th><th>المسئول</th><th>الدولة</th><th>المدينة</th><th>المنطقة</th><th>الهاتف</th><th>تعديل/حذف</th>
-</tr>
-</table>
+<div class="card">
+<h3>نظام مواعيد العيادات</h3>
+<p>
+نظام متكامل لحجز المواعيد الطبية وإدارة جدول الأطباء والمرضى.
+</p>
 </div>
 
-<!-- عرض مكتب + الدردشة -->
-<div id="officeView" class="section">
-<h2 id="officeTitle"></h2>
-<div class="chatContainer">
-<div id="chatBox" class="chat"></div>
-<div class="chatControls">
-<input id="chatInput" placeholder="اكتب رسالة">
-<button onclick="sendMessage()">إرسال</button>
-</div>
-</div>
 </div>
 
-<!-- الفواتير -->
-<div id="invoices" class="section">
-<h2>إنشاء فاتورة شحن</h2>
-<input id="sender" placeholder="اسم المرسل">
-<input id="receiver" placeholder="اسم المستلم">
-<input id="receiverPhone" placeholder="هاتف المستلم">
-<input id="cityReceiver" placeholder="مدينة المستلم">
-<input id="addressReceiver" placeholder="العنوان">
-<input id="shipmentType" placeholder="نوع الشحنة">
-<input id="pieces" placeholder="عدد القطع">
-<input id="weight" placeholder="الوزن">
-<input id="shippingCost" placeholder="تكلفة الشحن">
-<input id="codAmount" placeholder="COD">
-<select id="officeSelect"></select>
-<button onclick="createInvoice()">إنشاء الفاتورة</button>
-
-<h3>الفواتير</h3>
-<div id="invoiceList"></div>
 </div>
 
-<!-- البحث عن فاتورة -->
-<div id="searchInvoice" class="section">
-<h2>بحث عن فاتورة</h2>
-<input id="searchTracking" placeholder="أدخل رقم الفاتورة">
-<button onclick="searchInvoiceByTracking()">بحث</button>
-<div id="searchResult"></div>
+<div class="contact">
+<a href="https://wa.me/905016303022">تواصل مع المصمم</a>
 </div>
 
-<!-- الإعدادات -->
-<div id="settings" class="section">
-<h2>الإعدادات</h2>
-<input id="siteNameInput" placeholder="اسم الموقع">
-<input id="adminUserInput" placeholder="اسم المستخدم للإدمن">
-<input id="adminPassInput" placeholder="كلمة سر الإدمن" type="password">
-<button onclick="saveSettings()">حفظ الإعدادات</button>
-</div>
+<footer>
+© جميع الحقوق محفوظة - منصة تطوير الأنظمة
+</footer>
 
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-analytics-compat.js"></script>
-
-<script>
-// Firebase
-const firebaseConfig = {
-  apiKey: "AIzaSyAT3GvhnBAbUykGXhy9O_RvHsO80UO2cYE",
-  authDomain: "man-7f10b.firebaseapp.com",
-  databaseURL: "https://man-7f10b-default-rtdb.firebaseio.com",
-  projectId: "man-7f10b",
-  storageBucket: "man-7f10b.firebasestorage.app",
-  messagingSenderId: "442792808025",
-  appId: "1:442792808025:web:f85f15a8d0652bd232eb48",
-  measurementId: "G-HM4MD6PYFP"
-};
-firebase.initializeApp(firebaseConfig);
-firebase.analytics();
-const db = firebase.database();
-
-// Default admin credentials
-let adminUser = "fars";
-let adminPass = "2262321";
-let siteName = "Zom";
-
-// Sidebar
-const sidebar = document.getElementById("sidebar");
-const overlay = document.getElementById("overlay");
-function toggleMenu(){ sidebar.classList.toggle("active"); overlay.style.display = sidebar.classList.contains("active")?"block":"none"; }
-function closeMenu(){ sidebar.classList.remove("active"); overlay.style.display="none"; }
-function openSection(id){
-  document.querySelectorAll(".section").forEach(s=>s.classList.remove("active"));
-  document.getElementById(id).classList.add("active");
-  closeMenu();
-}
-
-// Login
-let currentUser = null;
-function login(){
-  const type=document.getElementById("userType").value;
-  const user=document.getElementById("loginUser").value.trim();
-  const pass=document.getElementById("loginPass").value.trim();
-  const msg=document.getElementById("loginMsg");
-  msg.innerText="";
-  if(type==="admin"){
-    if(user===adminUser && pass===adminPass){
-      currentUser="admin";
-      document.getElementById("loginBox").style.display="none";
-      document.getElementById("mainHeader").style.display="flex";
-      document.getElementById("adminMenu").style.display="block";
-      document.getElementById("officeMenu").style.display="none";
-      document.getElementById("siteTitle").innerText = siteName+" - لوحة التحكم";
-      openSection('offices');
-    } else { msg.innerText="اسم المستخدم أو كلمة السر خاطئة"; }
-  } else {
-    // مكتب
-    db.ref('offices').orderByChild('login/phone').equalTo(user).once('value',snap=>{
-      let found=null;
-      snap.forEach(s=>{ if(s.val().login.password===pass) found={key:s.key,...s.val()}; });
-      if(found){
-        currentUser={type:"office",key:found.key};
-        document.getElementById("loginBox").style.display="none";
-        document.getElementById("mainHeader").style.display="flex";
-        document.getElementById("adminMenu").style.display="none";
-        document.getElementById("officeMenu").style.display="block";
-        document.getElementById("siteTitle").innerText = siteName+" - مكتب "+found.responsible;
-        openSection('officeView');
-        openOffice(found.key);
-      } else { msg.innerText="رقم الهاتف أو كلمة السر خاطئة"; }
-    });
-  }
-}
-
-// MOC
-let offices=[],currentOffice=null,invoices=[];
-
-// إنشاء مكتب
-function createOffice(){
-  const office={ responsible:document.getElementById("responsible").value,
-    country:document.getElementById("country").value,
-    city:document.getElementById("city").value,
-    area:document.getElementById("area").value,
-    phone:document.getElementById("phone").value,
-    login:{phone:document.getElementById("officePhone").value,password:document.getElementById("officePassword").value} };
-  db.ref('offices').push(office);
-  alert("تم إنشاء المكتب");
-  document.querySelectorAll("#createOffice input").forEach(i=>i.value="");
-}
-
-// قراءة المكاتب
-db.ref('offices').on('value',snap=>{
-  offices=[]; snap.forEach(s=>offices.push({key:s.key,...s.val()}));
-  renderOffices(); renderManageOffices(); updateOfficeSelect();
-});
-
-// عرض المكاتب
-function renderOffices(){
-  const list=document.getElementById("officeList"); list.innerHTML="";
-  offices.forEach((o,i)=>{
-    const div=document.createElement("div");
-    div.className="office";
-    div.innerHTML=`مكتب ${i+1}<br>المسئول: ${o.responsible}`;
-    div.onclick=()=>openOffice(o.key);
-    list.appendChild(div);
-  });
-}
-
-// إدارة المكاتب
-function renderManageOffices(){
-  const table=document.getElementById("manageOfficeTable");
-  table.querySelectorAll("tr:not(:first-child)").forEach(r=>r.remove());
-  offices.forEach((o,i)=>{
-    const tr=document.createElement("tr");
-    tr.innerHTML=`<td>${i+1}</td>
-      <td><input value="${o.responsible}" onchange="updateOfficeField('${o.key}','responsible',this.value)"></td>
-      <td><input value="${o.country}" onchange="updateOfficeField('${o.key}','country',this.value)"></td>
-      <td><input value="${o.city}" onchange="updateOfficeField('${o.key}','city',this.value)"></td>
-      <td><input value="${o.area}" onchange="updateOfficeField('${o.key}','area',this.value)"></td>
-      <td><input value="${o.phone}" onchange="updateOfficeField('${o.key}','phone',this.value)"></td>
-      <td><button onclick="deleteOffice('${o.key}')">حذف</button></td>`;
-    table.appendChild(tr);
-  });
-}
-function updateOfficeField(key,f,v){ db.ref('offices/'+key+'/'+f).set(v); }
-function deleteOffice(key){ if(confirm("هل تريد حذف هذا المكتب؟")) db.ref('offices/'+key).remove(); }
-
-// فتح مكتب + الدردشة
-function openOffice(key){
-  currentOffice=key;
-  const office=offices.find(o=>o.key===key);
-  document.getElementById("officeTitle").innerText="مكتب "+office.responsible;
-  openSection("officeView");
-  const chatBox=document.getElementById("chatBox"); chatBox.innerHTML="";
-  // استمع لرسائل المكتب
-  db.ref('messages/'+key).on('value',snap=>{
-    chatBox.innerHTML="";
-    snap.forEach(s=>{
-      const msg=s.val();
-      const cls=msg.user?"user":"office";
-      const time=new Date(msg.timestamp).toLocaleString();
-      let text=msg.text;
-      if(msg.pdf) text+=` <a href="${msg.pdf}" target="_blank">تحميل PDF</a>`;
-      chatBox.innerHTML+=`<div class="message ${cls}">${text}<div class="timestamp">${time}</div></div>`;
-    });
-    chatBox.scrollTop=chatBox.scrollHeight;
-  });
-}
-
-// إرسال رسالة
-function sendMessage(){
-  if(!currentOffice) return;
-  const msg=document.getElementById("chatInput").value.trim();
-  if(!msg) return;
-  db.ref('messages/'+currentOffice).push({text:msg,user:true,timestamp:Date.now()});
-  document.getElementById("chatInput").value="";
-}
-
-// الفواتير
-function tracking(){return "TRK-"+Math.floor(Math.random()*1000000);}
-function createInvoice(){
-  const officeKey=document.getElementById("officeSelect").value;
-  const inv={tracking:tracking(),sender:document.getElementById("sender").value,
-    receiver:document.getElementById("receiver").value,phone:document.getElementById("receiverPhone").value,
-    city:document.getElementById("cityReceiver").value,address:document.getElementById("addressReceiver").value,
-    type:document.getElementById("shipmentType").value,pieces:document.getElementById("pieces").value,
-    weight:document.getElementById("weight").value,cost:document.getElementById("shippingCost").value,
-    cod:document.getElementById("codAmount").value,timestamp:Date.now()};
-  const newRef=db.ref('invoices').push();
-  newRef.set(inv);
-  // إنشاء PDF وإرساله للدردشة
-  const { jsPDF } = window.jspdf;
-  const doc=new jsPDF();
-  doc.text("فاتورة شحن",90,10);
-  doc.text("Tracking: "+inv.tracking,10,30);
-  doc.text("Sender: "+inv.sender,10,40);
-  doc.text("Receiver: "+inv.receiver,10,50);
-  doc.text("City: "+inv.city,10,60);
-  doc.text("Address: "+inv.address,10,70);
-  doc.text("Pieces: "+inv.pieces,10,80);
-  doc.text("Weight: "+inv.weight,10,90);
-  doc.text("Shipping Cost: "+inv.cost,10,100);
-  doc.text("COD: "+inv.cod,10,110);
-  const pdf=doc.output("datauristring");
-  db.ref('messages/'+officeKey).push({text:"📄 فاتورة "+inv.tracking,pdf,timestamp:Date.now()});
-  alert("تم إنشاء الفاتورة وإرسالها للمكتب المحدد");
-  document.querySelectorAll("#invoices input").forEach(i=>i.value="");
-}
-
-// قراءة الفواتير
-db.ref('invoices').on('value',snap=>{
-  invoices=[]; snap.forEach(s=>invoices.push({key:s.key,...s.val()}));
-  renderInvoices(); renderAllInvoicesInSearch();
-});
-
-// عرض الفواتير
-function renderInvoices(){
-  const list=document.getElementById("invoiceList"); list.innerHTML="";
-  invoices.forEach(inv=>{
-    const date=new Date(inv.timestamp).toLocaleString();
-    list.innerHTML+=`<div class="invoiceItem">
-      رقم التتبع: ${inv.tracking}<br>المرسل: ${inv.sender}<br>المستلم: ${inv.receiver}<br>المدينة: ${inv.city}<br>العنوان: ${inv.address}<br>النوع: ${inv.type}<br>القطع: ${inv.pieces}<br>الوزن: ${inv.weight}<br>تكلفة الشحن: ${inv.cost}<br>COD: ${inv.cod}<br>التاريخ: ${date}
-      <div class="invoiceControls">
-        <button onclick="editInvoice('${inv.key}')">تعديل</button>
-        <button onclick="deleteInvoice('${inv.key}')">حذف</button>
-      </div>
-    </div>`;
-  });
-}
-
-// تعديل وحذف
-function deleteInvoice(key){ if(confirm("هل تريد حذف الفاتورة؟")) db.ref('invoices/'+key).remove(); }
-function editInvoice(key){
-  const inv=invoices.find(i=>i.key===key);
-  document.getElementById("sender").value=inv.sender;
-  document.getElementById("receiver").value=inv.receiver;
-  document.getElementById("receiverPhone").value=inv.phone;
-  document.getElementById("cityReceiver").value=inv.city;
-  document.getElementById("addressReceiver").value=inv.address;
-  document.getElementById("shipmentType").value=inv.type;
-  document.getElementById("pieces").value=inv.pieces;
-  document.getElementById("weight").value=inv.weight;
-  document.getElementById("shippingCost").value=inv.cost;
-  document.getElementById("codAmount").value=inv.cod;
-  deleteInvoice(key);
-}
-
-// البحث عن الفاتورة
-function searchInvoiceByTracking(){
-  const trk=document.getElementById("searchTracking").value.trim();
-  const resultDiv=document.getElementById("searchResult"); resultDiv.innerHTML="";
-  let found=invoices; if(trk) found=invoices.filter(i=>i.tracking===trk);
-  if(found.length===0){ resultDiv.innerHTML="لا توجد فاتورة بهذا الرقم"; return; }
-  found.forEach(inv=>{
-    const date=new Date(inv.timestamp).toLocaleString();
-    resultDiv.innerHTML+=`<div class="invoiceItem">
-      رقم التتبع: ${inv.tracking}<br>المرسل: ${inv.sender}<br>المستلم: ${inv.receiver}<br>المدينة: ${inv.city}<br>العنوان: ${inv.address}<br>النوع: ${inv.type}<br>القطع: ${inv.pieces}<br>الوزن: ${inv.weight}<br>تكلفة الشحن: ${inv.cost}<br>COD: ${inv.cod}<br>التاريخ: ${date}
-      <div class="invoiceControls">
-        <button onclick="editInvoice('${inv.key}')">تعديل</button>
-        <button onclick="deleteInvoice('${inv.key}')">حذف</button>
-      </div>
-    </div>`;
-  });
-}
-function renderAllInvoicesInSearch(){ document.getElementById("searchTracking").value=""; searchInvoiceByTracking(); }
-
-// الإعدادات
-function saveSettings(){
-  siteName=document.getElementById("siteNameInput").value || siteName;
-  adminUser=document.getElementById("adminUserInput").value || adminUser;
-  adminPass=document.getElementById("adminPassInput").value || adminPass;
-  document.getElementById("siteTitle").innerText=siteName+" - لوحة التحكم";
-  document.getElementById("logoText").innerText=siteName;
-  document.getElementById("logoChar").innerText=siteName[0];
-  db.ref('settings/siteName').set(siteName);
-  alert("تم حفظ الإعدادات");
-}
-
-// استماع لتغير اسم الموقع من Firebase
-db.ref('settings/siteName').on('value',snap=>{
-  const newName = snap.val();
-  if(newName){
-    document.getElementById("logoText").innerText = newName;
-    document.getElementById("logoChar").innerText = newName[0];
-    if(currentUser==="admin") document.getElementById("siteTitle").innerText = newName+" - لوحة التحكم";
-    else if(currentUser?.type==="office"){
-      const office=offices.find(o=>o.key===currentUser.key);
-      document.getElementById("siteTitle").innerText = newName+" - مكتب "+(office?office.responsible:"");
-    }
-  }
-});
-
-// تحديث select المكاتب للفواتير
-function updateOfficeSelect(){
-  const select=document.getElementById("officeSelect"); select.innerHTML="";
-  offices.forEach(o=>{select.innerHTML+=`<option value="${o.key}">${o.responsible}</option>`});
-}
-</script>
 </body>
-</html>
+  </html>
