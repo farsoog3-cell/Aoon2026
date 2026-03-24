@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dinar - بطاقة دفع افتراضية</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --tide-blue: #0014bc;
+            --tide-dark: #000b66;
+        }
+        body {
+            font-family: 'Tajawal', sans-serif;
+            background-color: var(--tide-blue);
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        .logo-text {
+            font-family: Arial, sans-serif;
+            font-weight: 900;
+            letter-spacing: -1.5px;
+        }
+        #sidebar {
+            transition: transform 0.5s cubic-bezier(0.77, 0, 0.175, 1);
+            background: linear-gradient(180deg, var(--tide-blue) 0%, var(--tide-dark) 100%);
+            backdrop-filter: blur(15px);
+        }
+        .sidebar-link {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.5rem 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 1.3rem;
+            font-weight: 500;
+            color: white;
+            text-decoration: none;
+            transition: opacity 0.3s;
+        }
+        .sidebar-link:hover {
+            opacity: 0.7;
+        }
+        .india-flag {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            overflow: hidden;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        #sidebar-nav::-webkit-scrollbar {
+            width: 4px;
+        }
+        #sidebar-nav::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.2);
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body class="text-white flex flex-col items-center px-6 py-8 relative">
+
+    <!-- القائمة الجانبية -->
+    <aside id="sidebar" class="fixed top-0 right-0 h-full w-full z-50 translate-x-full flex flex-col">
+        <div class="flex justify-between items-center p-8">
+            <span class="text-4xl font-black logo-text text-white">dinar</span>
+            <button id="close-sidebar" class="text-white p-2 focus:outline-none transition-transform active:scale-90">
+                <svg width="32" height="32" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+
+        <nav id="sidebar-nav" class="flex-1 px-8 overflow-y-auto mt-4">
+            <a href="start-project.html" class="sidebar-link group">
+                <span>ابدأ مشروعك</span>
+                <svg class="w-5 h-5 transition-transform group-hover:-translate-x-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3"><path d="M15 19l-7-7 7-7"></path></svg>
+            </a>
+            <a href="business-accounts.html" class="sidebar-link group">
+                <span>حسابات الأعمال</span>
+                <svg class="w-5 h-5 transition-transform group-hover:-translate-x-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3"><path d="M15 19l-7-7 7-7"></path></svg>
+            </a>
+            <a href="cards.html" class="sidebar-link group">
+                <span>البطاقات والائتمان</span>
+                <svg class="w-5 h-5 transition-transform group-hover:-translate-x-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3"><path d="M15 19l-7-7 7-7"></path></svg>
+            </a>
+            <a href="support.html" class="sidebar-link group border-none">
+                <span>الدعم والمساعدة</span>
+                <svg class="w-5 h-5 transition-transform group-hover:-translate-x-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3"><path d="M15 19l-7-7 7-7"></path></svg>
+            </a>
+        </nav>
+
+        <div class="p-8 bg-black/10 border-t border-white/10 flex flex-col gap-4 mb-2">
+            <a href="signup.html" class="w-full bg-white text-[#0014bc] font-bold py-4 rounded-full text-xl shadow-xl hover:bg-gray-100 active:scale-95 transition-all text-center">
+                افتح حساب مجاني
+            </a>
+            <a href="login.html" class="w-full border-2 border-white/40 text-white font-bold py-4 rounded-full text-xl hover:border-white active:scale-95 transition-all text-center">
+                تسجيل الدخول
+            </a>
+        </div>
+    </aside>
+
+    <!-- الهيدر -->
+    <nav class="w-full flex justify-between items-center mb-12 relative z-10">
+        <div class="text-4xl logo-text">dinar</div>
+        <button id="open-sidebar" class="bg-white/10 p-2 rounded-full hover:bg-white/20 transition-colors">
+            <svg width="32" height="24" viewBox="0 0 32 24" fill="white">
+                <rect width="32" height="3" rx="1.5"/><rect y="10" width="32" height="3" rx="1.5"/><rect y="20" width="32" height="3" rx="1.5"/>
+            </svg>
+        </button>
+    </nav>
+
+    <!-- المحتوى الرئيسي -->
+    <main class="flex flex-col items-center text-center w-full max-w-lg relative z-10">
+        <h1 class="text-4xl md:text-5xl font-bold leading-tight mb-4 tracking-tight">
+            بطاقة دفع افتراضية <br> في ثواني
+        </h1>
+        <p class="text-white/70 text-lg md:text-xl font-medium px-4 mb-10">
+            اصدر بطاقتك الافتراضية فوراً، و ادر مدفوعاتك العالمية بأمان
+        </p>
+        <div class="relative w-full max-w-sm flex justify-center mb-10">
+             <img src="shop-front.jpg" alt="App Interface" class="w-full h-auto object-contain">
+        </div>
+    </main>
+
+    <!-- الفوتر -->
+    <footer class="w-full max-w-md mt-auto pb-10 relative z-10 px-2 flex flex-col items-center">
+        <button class="w-full bg-white text-[#0014bc] font-bold py-4 rounded-full text-2xl mb-12 shadow-xl active:scale-95 transition-transform">
+            تحميل التطبيق
+        </button>
+
+        <div class="flex gap-4 mb-12 w-full max-w-xs justify-center">
+            <a href="#" class="active:scale-95 transition-transform">
+                <img src="https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg" alt="App Store" class="h-10">
+            </a>
+            <a href="#" class="active:scale-95 transition-transform">
+                <img src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png" alt="Play Store" class="h-14 -mt-2">
+            </a>
+        </div>
+
+        <div class="w-full h-[1px] bg-white/20 mb-8"></div>
+
+        <div class="flex flex-col gap-6 px-2 w-full">
+            <div class="flex items-center gap-4">
+                <span class="text-2xl font-black logo-text">dinar</span>
+                <div class="h-6 w-[1px] bg-white/40"></div>
+                <span class="text-xs font-medium tracking-wide">Do what you love.</span>
+                <div class="india-flag mr-auto">
+                    <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="21.3" fill="#FF9933"/><rect y="21.3" width="64" height="21.3" fill="#FFFFFF"/><rect y="42.6" width="64" height="21.3" fill="#128807"/><circle cx="32" cy="32" r="6" fill="none" stroke="#000080" stroke-width="0.5"/></svg>
+                </div>
+            </div>
+            <p class="text-[10px] leading-relaxed text-white/50 text-justify">
+                دنانير مرخصة كشركة تقنية مالية لتقديم خدمات البطاقات الافتراضية وإدارة المدفوعات. جميع الحقوق محفوظة © 2026.
+            </p>
+        </div>
+    </footer>
+
+    <script>
+        const sidebar = document.getElementById('sidebar');
+        const openBtn = document.getElementById('open-sidebar');
+        const closeBtn = document.getElementById('close-sidebar');
+
+        openBtn.onclick = () => {
+            sidebar.classList.remove('translate-x-full');
+            document.body.style.overflow = 'hidden';
+        }
+
+        closeBtn.onclick = () => {
+            sidebar.classList.add('translate-x-full');
+            document.body.style.overflow = '';
+        }
+    </script>
+</body>
+</html>
